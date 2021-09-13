@@ -178,6 +178,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     $content['caller_id'] = $meow_sys_id[0]['value'];
   }
   $description = '';
+  $file_upload = 0;
   foreach ($form['elements'] as $key => $element) {
     $form_item_type = isset($element['#type']) ? $element['#type'] : 'non-item';
     $form_key = Xss::filter($key);
@@ -202,6 +203,20 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
         if (!empty($item) || $item == 0) {
           $description .= _servicenow_webform_data($element);
         }
+      }
+    }
+    $element_type = isset($element['#type']) ? $element['#type'] : 0;
+    if (($element_type) && ($element_type == 'managed_file' || $element_type == 'webform_audio_file' || $element_type == 'webform_video_file' || $element_type == 'webform_image_file' || $element_type == 'webform_document_file')) {
+      $fids = $element['#value']['fids'];
+      foreach ($fids as $fid) {
+        $file_upload = 1;
+        $file_url = $element['#files'][$fid]->createFileUrl();
+        $file_mime = $element['#files'][$fid]->getMimeType();
+        $files[] = [
+          'name' => $element['#files'][$fid]->getFilename(),
+          'url' => file_create_url($file_url),
+          'mime' => $file_mime,
+        ];
       }
     }
   }
@@ -298,6 +313,36 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   else {
     $tempstore->set("meow-status", 1);
     $info = curl_getinfo($ch);
+    if ($file_upload) {
+      $sys_id = $result->result->sys_id;
+      foreach ($files as $file) {
+        $name = $file['name'];
+        $url = $file['url'];
+        $mime = $file['mime'];
+        $upload_url = "$servicenow_url/api/now/attachment/file?table_name=incident&table_sys_id=$sys_id&file_name=$name";
+
+        $url = 'sites/default/files/web-registration-screenshot.png';
+        $url_open = file_get_contents($url);
+
+        $data['data'] = $url_open;
+
+        $ch_files = curl_init();
+        // Set url to post to.
+        curl_setopt($ch_files, CURLOPT_URL, $upload_url);
+        curl_setopt($ch_files, CURLOPT_USERPWD, $meow_key);
+        // Return into a variable.
+        curl_setopt($ch_files, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch_files, CURLOPT_HTTPHEADER, [
+          "Content-Type:$mime",
+          "Accept:application/json",
+        ]);
+        // Add POST fields.
+        curl_setopt($ch_files, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch_files, CURLOPT_POST, 1);
+        $result_files = curl_exec($ch_files);
+      }
+      curl_close($ch_files);
+    }
     // Close cURL handler.
     curl_close($ch);
     if (empty($info['http_code'])) {
@@ -371,9 +416,6 @@ function _servicenow_webform_fieldset($element, $section_type) {
       $description .= _servicenow_webform_fieldset($form_fs_val, $form_item_type);
     }
     elseif ($form_item_type != 'non-item') {
-      // No longer showing the section part.
-      // $description .= "--------------------------<<
-      // $section_type >>--------------------------\n";.
       $description .= _servicenow_webform_data($form_fs_val);
     }
   }
