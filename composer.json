@@ -1,0 +1,9 @@
+{
+  "name": "oit/servicenow",
+  "type": "drupal-custom-module",
+  "description": "Webforms to submit to servicenow",
+  "keywords": ["Drupal"],
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/UCBoulder/servicenow",
+  "minimum-stability": "dev"
+}

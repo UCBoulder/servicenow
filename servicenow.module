@@ -1,0 +1,670 @@
+<?php
+
+/**
+ * @file
+ * Servicenow Module.
+ */
+
+use Drupal\servicenow\Plugin\CacheDrupalFormList;
+use Drupal\webform\Entity\WebformSubmission;
+use Drupal\servicenow\Plugin\ServicenowApiCall;
+use Drupal\user\UserInterface;
+use Drupal\Component\Utility\Xss;
+use Drupal\Core\Render\Markup;
+use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\servicenow\Plugin\ServicenowUrl;
+use Drupal\servicenow\Plugin\LookupPrincess;
+use Drupal\servicenow\Plugin\FetchDrupalFormList;
+use Drupal\servicenow\Plugin\FetchPrincessList;
+use Drupal\user\Entity\User;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
+use Drupal\Core\Link;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Drupal\servicenow\Plugin\ServicenowFetchSettings;
+use Drupal\oit\Plugin\TeamsAlert;
+
+/**
+ * Implements hook_mail().
+ * */
+function servicenow_mail($key, &$message, $params) {
+  switch ($key) {
+    case 'snmail':
+      $message['subject'] = t('servicenow api error');
+      $message['body'] = [];
+      $message['body'][] = 'Error occurred on the following node: ' . $params['nid'];
+      break;
+  }
+}
+
+/**
+ * Send email.
+ */
+function servicenow_send($key, $params) {
+  $to = 'france@colorado.edu';
+  $langcode = \Drupal::currentUser()->getPreferredLangcode();
+  $send = TRUE;
+  $module = 'servicenow';
+  $mailManager = \Drupal::service('plugin.manager.mail');
+  $result = $mailManager->mail($module, $key, $to, $langcode, $params, NULL, $send);
+  return $result;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Deny access to servicenow id info. Only gathered for form submission.
+  $current_user = \Drupal::currentUser();
+  $user_roles = $current_user->getRoles();
+  if (!in_array("administrator", $user_roles) && !in_array("pseudo_admin", $user_roles) && $form_id == 'user_form') {
+    $form['field_service_meow_uuid']['#access'] = FALSE;
+    $form['field_service_meow_sys_id']['#access'] = FALSE;
+    $form['field_service_meow_department_id']['#access'] = FALSE;
+    $form['field_service_meow_dds_pod_group']['#access'] = FALSE;
+    $form['field_service_meow_affiliations']['#access'] = FALSE;
+    $form['field_dds']['#access'] = FALSE;
+  }
+  if ($form['#id'] == 'webform-components-form') {
+    $form['add']['name']['#autocomplete_path'] = 'servicenow/autocomplete';
+  }
+  if (isset($form['elements']['sn_table'])) {
+    // Add the submit handler after the existing Webform submit handler,
+    // but before the second Webform handler. Pop off the first one and add
+    // ours second.
+    $sn_table_type = isset($form['elements']['sn_table']['#default_value']) ? $form['elements']['sn_table']['#default_value'] : 'incident';
+    if ($sn_table_type == 'incident' || 'ticket' || 'u_gnrl_req') {
+      foreach (array_keys($form['actions']) as $action) {
+        if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
+          // If node 16699 set the impact field.
+          if ($form_id == 'webform_submission_dds_desktop_support_node_16699_add_form') {
+            $form['actions'][$action]['#submit'][] = 'servicenow_client_princess_submit_api';
+          }
+          $form['actions'][$action]['#submit'][] = 'servicenow_client_submit_api';
+        }
+      }
+    }
+    $env = getenv('AH_SITE_ENVIRONMENT');
+    switch ($env) {
+      case 'dev':
+        $url = Url::fromUri('https://morty-oit.colorado.edu');
+        $morty_link = Link::fromTextAndUrl(t('morty-oit'), $url)->toString();
+        \Drupal::messenger()->addMessage(t("Submits to Servicenow production environment. Use %link to use dev.", ['%link' => $morty_link]));
+        break;
+
+      case 'test':
+      case 'local':
+      case 'lando':
+        $url = Url::fromUri('https://rick-oit.colorado.edu');
+        $rick_link = Link::fromTextAndUrl(t('rick-oit'), $url)->toString();
+        \Drupal::messenger()->addMessage(t("Submits to Servicenow dev environment. Use %link to use production.", ['%link' => $rick_link]));
+        break;
+    }
+  }
+  $logged_in = $current_user->isAuthenticated();
+  if (($form_id == 'webform_submission_dds_desktop_support_add_form' || $form_id == 'webform_submission_dds_desktop_support_node_16699_add_form') && $logged_in) {
+    $user_detail = User::load($current_user->id());
+    // kint($user_detail->get('field_service_meow_sys_id')->getString());
+    $request = \Drupal::request();
+    $selected_department = NULL !== $request->get('department') ? Xss::filter($request->get('department')) : '';
+    if ($selected_department == '') {
+      $url = Url::fromRoute('servicenow.servicenow_form');
+      $response = new RedirectResponse($url->toString());
+      $response->send();
+    }
+    else {
+      $princess = new FetchPrincessList();
+      $princess_list = $princess->getData();
+      $princess_list = $princess_list['users'];
+      // Grab the user servicenow data that is using the form.
+      $current_user_sysid = $user_detail->get('field_service_meow_sys_id')->getString();
+      $current_user_data = $princess_list[$current_user_sysid];
+      $behalf_of_users = [];
+      foreach ($princess_list as $princess_user) {
+        $request_group = $princess_user['request_group'];
+        $sys_id = $princess_user['sys_id'];
+        $user_name = $princess_user['user_name'];
+        if (in_array($selected_department, $request_group)) {
+          $behalf_of_users[$sys_id] = $user_name;
+        }
+      }
+      asort($behalf_of_users);
+      $current_user_key = $current_user_data['sys_id'];
+      $new_current_user_key = [$current_user_key => $princess_list[$current_user_sysid]['user_name'] . ' - Myself'];
+      unset($behalf_of_users[$current_user_key]);
+      $behalf_of_users = $new_current_user_key + $behalf_of_users;
+      $form['elements']['sn_hidden_current_user_id']['#default_value'] = $current_user_data['sys_id'];
+      $form['elements']['sn_caller_id']['#default_value'] = $current_user_data['sys_id'];
+      $form['elements']['sn_u_dds_group']['#default_value'] = $current_user_data['dds_group'];
+      $form['elements']['sn_assignment_group']['#default_value'] = $current_user_data['assignment_group'];
+      $form['elements']['sn_hidden_task_for_department']['#options'] = $behalf_of_users;
+      $form['elements']['sn_hidden_task_for_department']['#default_value'] = $current_user_key;
+      // todo:  Need to add js to change on selection.
+    }
+  }
+}
+
+/**
+ * FAPI #submit handler. Execute PHP submit handling.
+ */
+function servicenow_client_princess_submit_api(&$form, FormStateInterface $form_state) {
+  $input = $form_state->getUserInput();
+  if ($input['sn_urgency'] == '3 - Low') {
+    $form['elements']['sn_impact']['#value'] = '3 - Low';
+    $form['elements']['urgency_meow_desc']['#value'] = 'I would like help, but it\'s not particularly urgent';
+  }
+  if ($input['sn_urgency'] == '2 - Medium') {
+    $form['elements']['sn_impact']['#value'] = '2 - Medium';
+    $form['elements']['urgency_meow_desc']['#value'] = 'I would like this done today, if possible';
+  }
+}
+
+/**
+ * FAPI #submit handler. Execute PHP submit handling.
+ */
+function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
+  $user_submitting = User::load(\Drupal::currentUser()->id());
+  $content = [];
+  if ($node = Drupal::request()->attributes->get('node')) {
+    $node = Drupal::routeMatch()->getParameter('node');
+    // short_description set here, but overwritable by hidden form element.
+    $content['short_description'] = $node->getTitle();
+  }
+  $meow_sys_id = $user_submitting->get('field_service_meow_sys_id')->getValue();
+  if ($form['elements']['sn_table'] == 'ticket' || 'u_gnrl_req') {
+    $content['task_for'] = $meow_sys_id[0]['value'];
+  }
+  if ($form['elements']['sn_table'] == 'incident') {
+    $content['caller_id'] = $meow_sys_id[0]['value'];
+  }
+  $description = '';
+  foreach ($form['elements'] as $key => $element) {
+    $form_item_type = isset($element['#type']) ? $element['#type'] : 'non-item';
+    $form_key = Xss::filter($key);
+    if ($form_item_type == 'fieldset' || $form_item_type == 'container' || $form_item_type == 'details' || $form_item_type == 'webform_section') {
+      $description .= _servicenow_webform_fieldset($element, $form_item_type);
+    }
+    elseif ($form_item_type == 'webform_flexbox' || $form_item_type == 'webform_address' || $form_item_type == 'webform_contact') {
+      $description .= _servicenow_webform_flexbox($element);
+    }
+    elseif ($form_item_type == 'text_format' && isset($element['#default_value'])) {
+      $description .= _servicenow_webform_data($element);
+    }
+    elseif (((!preg_match("/^#/", $form_key)) && (isset($element['#value'])))) {
+      $item = is_array($element['#value']) ? $element['#value'] : Xss::filter($element['#value']);
+      if (preg_match("/^sn_hidden_/", $key)) {
+      }
+      elseif (preg_match("/^sn_/", $key)) {
+        $key = substr($key, 3);
+        $content[$key] = Xss::filter($item);
+      }
+      else {
+        if (!empty($item) || $item == 0) {
+          $description .= _servicenow_webform_data($element);
+        }
+      }
+    }
+  }
+  // Grab the drupal webform list from cache or servicenow.
+  $drupal_form_list = new FetchDrupalFormList();
+  // Get this drupal webform list.
+  $form_list = $drupal_form_list->getList();
+  $table_type = $form['elements']['sn_table']['#value'];
+  // Load entity to grab the Node ID.
+  $form_object = $form_state->getFormObject();
+  $webform_submission = $form_object->getEntity();
+  $source = $webform_submission->getSourceEntity();
+  $nid = $source->id();
+  // Create the key that will show up in the drupal form list.
+  $drupal_form_array_id = $nid . '_' . $table_type;
+  if (isset($form_list[$drupal_form_array_id])) {
+    // Set both of these so we can track where the submission comes from in SN.
+    $content['u_intg_table'] = 'u_drupal_form';
+    $content['u_intg_assignment'] = $form_list[$drupal_form_array_id];
+  }
+  else {
+    $sn_settings = new ServicenowFetchSettings();
+    $sn_settings->set(1);
+  }
+  $content['description'] = $description;
+  $content['u_alternate_email'] = $user_submitting->getEmail();
+  $meow_sys_id = $user_submitting->get('field_service_meow_sys_id')->getValue();
+  $content['opened_by'] = $meow_sys_id[0]['value'];
+
+  // Set aleternate_email and contact_name on princess list depending on who was
+  // selected in the 'on behalf of' drop-down.
+  if ($form['#form_id'] == 'webform_submission_dds_desktop_support_add_form' || $form['#form_id'] == 'webform_submission_dds_desktop_support_node_16699_add_form') {
+    $current_user_id = Xss::filter($form['elements']['sn_hidden_current_user_id']['#value']);
+    $selected_user_id = Xss::filter($form['elements']['sn_hidden_task_for_department']['#value']);
+    $selected_user_fetch_info = new LookupPrincess($selected_user_id);
+    $content['u_alternate_email'] = NULL !== $selected_user_fetch_info->getEmail() ? $selected_user_fetch_info->getEmail() : $user_submitting->getEmail();
+    $content['caller_id'] = $selected_user_id;
+    if ($selected_user_id != $current_user_id) {
+      $content['u_requested_by'] = $current_user_id;
+    }
+    $content['u_contact_name'] = $selected_user_fetch_info->getName();
+    $content['u_dds_group'] = $selected_user_fetch_info->getDdsGroup();
+    $content['assignment_group'] = $selected_user_fetch_info->getAssignmentGroup();
+  }
+
+  $content_encode = json_encode($content);
+  $construct_url = new ServicenowUrl();
+  $servicenow_url = $construct_url->getUrl();
+  $post_url = $servicenow_url . '/api/now/table/' . $table_type;
+  $meow_key = trim(Drupal::service('key.repository')->getKey('meow_key')->getKeyValue());
+  // Initialize curl handle.
+  $ch = curl_init();
+  curl_setopt($ch, CURLOPT_USERPWD, $meow_key);
+  // Set url to post to.
+  curl_setopt($ch, CURLOPT_URL, $post_url);
+  // Return into a variable.
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+  curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Accept:application/json",
+    "Content-Type:application/json",
+  ]);
+  // Add POST fields.
+  curl_setopt($ch, CURLOPT_POSTFIELDS, $content_encode);
+  curl_setopt($ch, CURLOPT_POST, 1);
+  // Run the whole process.
+  $result = curl_exec($ch);
+  $result = json_decode($result);
+  // Params is the array passed to hook_mail function.
+  $params = [
+    'nid' => $node->id(),
+  ];
+  // Set status in the tempstore in order to properly set an error
+  // message/title.
+  $tempstore = \Drupal::service('tempstore.private')->get('servicenow');
+  if (empty($result)) {
+    $tempstore->set("meow-status", 0);
+    \Drupal::logger('servicenow')->error("servicenow api not communicating correctly \_(ツ)_/¯ api post call: " . $post_url);
+    \Drupal::messenger()->addMessage(t("Your submission has not been submitted to Service Now."), 'error');
+    $form['service_now'] = 'Your submission has not been submitted to Service Now. Please click our feedback button to report this error.';
+    servicenow_send('snmail', $params);
+    // Close cURL handler.
+    curl_close($ch);
+    // Some kind of an error happened.
+    //die(curl_error($ch));
+  }
+  elseif (empty($result->result->number)) {
+    $tempstore->set("meow-status", 0);
+    \Drupal::logger('servicenow')->error("Servicenow not creating ticket \_(ツ)_/¯ api results: " . $post_url . $result->error->message . " Details: " . $result->error->detail);
+    \Drupal::messenger()->addMessage(t("Your submission has not been submitted to Service Now."), 'error');
+    $form['service_now'] = 'Your submission has not been submitted to Service Now. Please click our feedback button to report this error.';
+    servicenow_send('snmail', $params);
+    curl_close($ch);
+  }
+  else {
+    $tempstore->set("meow-status", 1);
+    $info = curl_getinfo($ch);
+    // Close cURL handler.
+    curl_close($ch);
+    if (empty($info['http_code'])) {
+      \Drupal::logger('servicenow')->error("No HTTP code was returned from servicenow.");
+    }
+    $sn_case_num = $result->result->number;
+    $sn_sysid = $result->result->sys_id;
+    $sn_description = nl2br($result->result->description);
+    $sn_link = sprintf(
+      '<a href="%s">%s</a>',
+      $servicenow_url . '/sncms/view.do?sysparm_document_key=task,' . $sn_sysid,
+      t('View on Servicenow')
+    );
+    \Drupal::messenger()->addMessage(t("Your submission has been completed successfully."));
+    \Drupal::messenger()->addMessage(sprintf(
+      "%s %s",
+      t("Your request ID is:"),
+      $sn_case_num
+    ));
+    $sn_link = Markup::create($sn_link);
+    \Drupal::messenger()->addMessage($sn_link, 'status');
+    $sent_description = sprintf(
+      "<details><summary>%s</summary>%s</details>",
+      t("Details sent to Servicenow"),
+      $sn_description
+    );
+    $sent_description = Markup::create($sent_description);
+    \Drupal::messenger()->addMessage($sent_description);
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ */
+function servicenow_preprocess_webform_confirmation(&$vars) {
+  $tempstore = \Drupal::service('tempstore.private')->get('servicenow');
+  $meow_status = $tempstore->get("meow-status");
+
+  if ($meow_status === 0) {
+    $markup = t('An error occurred sending this information to Service Now. Please try resubmitting or contact us at oithelp@colorado.edu for further assistance.');
+    $message['error'] = [
+      '#type' => 'inline_template',
+      '#template' => "{% trans %} An error occurred sending this information to Service Now. Please try resubmitting or {% endtrans %} <a href='oithelp@colorado.edu'>{% trans %} contact us {% endtrans %}</a> {% trans %} for further assistance. {% endtrans %}",
+    ];
+    $vars['message'] = $message;
+  }
+}
+
+/**
+ * Completes selection items with their key.
+ */
+function _servicenow_webform_options_key($element) {
+  $options = $element['#options'];
+  $option_key = Xss::filter($element['#value']);
+  if (isset($options[$option_key])) {
+    return $options[$option_key];
+  }
+  else {
+    return '';
+  }
+}
+
+/**
+ * Function to deal with nested fields.
+ */
+function _servicenow_webform_fieldset($element, $section_type) {
+  $description = isset($element['#title']) ? Xss::filter($element['#title']) . "\n" : '';
+  foreach ($element as $form_fs_val) {
+    $form_item_type = isset($form_fs_val['#type']) ? $form_fs_val['#type'] : 'non-item';
+    if ($form_item_type == 'fieldset' || $form_item_type == 'container' || $form_item_type == 'details' || $form_item_type == 'webform_section') {
+      $description .= _servicenow_webform_fieldset($form_fs_val, $form_item_type);
+    }
+    elseif ($form_item_type != 'non-item') {
+      // No longer showing the section part.
+      // $description .= "--------------------------<<
+      // $section_type >>--------------------------\n";.
+      $description .= _servicenow_webform_data($form_fs_val);
+    }
+  }
+  return $description;
+}
+
+/**
+ * Function to work with flexbox sections.
+ */
+function _servicenow_webform_flexbox($element) {
+  $description = '';
+  foreach ($element as $form_fs_val) {
+    $form_item_type = isset($form_fs_val['#type']) ? $form_fs_val['#type'] : 'non-item';
+    if ($form_item_type == 'fieldset') {
+      $description .= _servicenow_webform_fieldset($form_fs_val);
+    }
+    elseif ($form_item_type != 'non-item') {
+      $description .= _servicenow_webform_data($form_fs_val);
+    }
+  }
+  return $description;
+}
+
+/**
+ * Function to deal with multiple selection webforms.
+ */
+function _servicenow_webform_data($element) {
+  if (is_array($element)) {
+    if ($element['#value'] == '') {
+      return '';
+    }
+    $content = isset($element['#title']) ? Xss::filter($element['#title']) . " -\n" : '';
+    $element_type = isset($element['#type']) ? $element['#type'] : 0;
+    $element_value = isset($element['#value']) ? $element['#value'] : '';
+    if ($element_type == 'datetime') {
+      $date = Xss::filter($element['#value']['date']);
+      $date = date('F d Y', strtotime($date));
+      $time = Xss::filter($element['#value']['time']);
+      $content .= sprintf(
+        "%s: %s\n%s: %s",
+        t('Date'),
+        $date,
+        t('Time'),
+        $time
+      );
+    }
+    elseif ($element_type == 'date') {
+      $date = Xss::filter($element['#value']);
+      $date = date('F d Y', strtotime($date));
+      $content .= sprintf(
+        "%s: %s",
+        t('Date'),
+        $date
+          );
+    }
+    elseif ($element_type == 'webform_time') {
+      $time = Xss::filter($element['#value']);
+      $time = date('g:i a', strtotime($time));
+      $content .= $time;
+    }
+    elseif ($element_type == 'text_format') {
+      $content .= Xss::filter($element['value']['#value']);
+    }
+    elseif ($element_type == 'radios' || $element_type == 'select') {
+      $content .= _servicenow_webform_options_key($element);
+    }
+    elseif ($element_type == 'managed_file' || $element_type == 'webform_audio_file' || $element_type == 'webform_video_file' || $element_type == 'webform_image_file' || $element_type == 'webform_document_file') {
+      $fids = $element['#value']['fids'];
+      foreach ($fids as $fid) {
+        $file_uri = $element['#files'][$fid]->getFileUri();
+        $file_url = file_create_url($file_uri);
+        $content .= $file_url;
+      }
+    }
+    elseif ($element_type == 'webform_custom_composite') {
+      foreach ($element['#value'] as $comp_array) {
+        foreach ($comp_array as $key => $comp) {
+          $key = Xss::filter($key);
+          $title = $element['#element'][$key]['#title'];
+          $content .= "$title: " . Xss::filter($comp) . "\n";
+        }
+      }
+    }
+    elseif (is_array($element_value)) {
+      if (isset($element['#options'])) {
+        if ($element_type == 'webform_table_sort' || $element_type == 'webform_tableselect_sort' || $element_type == 'tableselect') {
+          foreach ($element['#value'] as $value) {
+            $content .= Xss::filter($value) . "\n";
+          }
+        }
+        else {
+          $options = $element['#options'];
+          foreach ($element['#value'] as $form_m) {
+            $option_key = Xss::filter($form_m);
+            $content .= Xss::filter($options[$option_key]) . "\n";
+          }
+        }
+      }
+      else {
+        foreach ($element['#value'] as $key => $text) {
+          if (isset($text['select'])) {
+            $content .= Xss::filter($text['select']) . "\n";
+          }
+          elseif (isset($text['other'])) {
+            $content .= Xss::filter($text['other']) . "\n";
+          }
+          else {
+            $content .= sprintf(
+              "%s: %s\n",
+              Xss::filter($key),
+              Xss::filter($text)
+                      );
+          }
+        }
+      }
+    }
+    elseif (!empty($element_value)) {
+      $content .= Xss::filter($element['#value']);
+    }
+    $content .= "\n\n";
+    return $content;
+  }
+  else {
+    return '';
+  }
+}
+
+/**
+ * Function to sort header response.
+ */
+function _get_headers_from_curl_response($response) {
+  $headers = [];
+
+  $header_text = substr($response, 0, strpos($response, "\r\n\r\n"));
+
+  foreach (explode("\r\n", $header_text) as $i => $line) {
+    if ($i === 0) {
+      $headers['http_code'] = $line;
+    }
+    else {
+      list ($key, $value) = explode(': ', $line);
+
+      $headers[$key] = $value;
+    }
+  }
+
+  return $headers;
+}
+
+/**
+ * Implements hook_user_login().
+ */
+function servicenow_user_login(UserInterface $account) {
+  // Add this check once working.
+  if (empty($account->get('field_service_meow_affiliations')->getValue())) {
+    $user = \Drupal::currentUser();
+    $query = ['user_name' => $user->getAccountName()];
+    $api_call = new ServicenowApiCall();
+    $result = $api_call->apiCallMeMaybe('sys_user', $query);
+    if (!empty($result->result)) {
+      if (isset($result->result[0]->department->value)) {
+        $query_dept = ['sys_id' => $result->result[0]->department->value];
+        $dept = $api_call->apiCallMeMaybe('cmn_department', $query_dept);
+        $deptartment = !empty($dept->result[0]->name) ? Xss::filter($dept->result[0]->name) : '';
+        $account->set('field_user_department', $deptartment , TRUE);
+        $account->set('field_service_meow_department_id', Xss::filter($result->result[0]->department->value), TRUE);
+        if (!empty($result->result[0]->u_secondarydepartment->value)) {
+          $query_dept2 = ['sys_id' => $result->result[0]->u_secondarydepartment->value];
+          $dept2 = $api_call->apiCallMeMaybe('cmn_department', $query_dept2);
+          $department2 = Xss::filter($dept2->result[0]->name);
+          $account->set('field_user_department2', $department2, TRUE);
+          $account->set('field_service_meow_department2id', Xss::filter($result->result[0]->department->value), TRUE);
+        } else {
+          $department2 = '';
+        }
+        // Set oit_administration role if dept matches correctly.
+        if ($deptartment == 'OIT-Administration' || $department2 == 'OIT-Administration') {
+          $account->addRole('oit_administration');
+        }
+      }
+      if (!empty($result->result[0]->u_boulderallaffiliations)) {
+        $affiliation = array_map('trim', array_filter(explode(',', $result->result[0]->u_boulderallaffiliations)));
+        $facstaff = [
+          'Employee-Officer/Exempt Professional',
+          'Staff-Officer/Exempt Professional',
+          'Employee-Officer/Exempt Professional',
+          'Employee-Research Faculty',
+          'Faculty-Research Faculty',
+          'Employee-Faculty',
+          'Employee-Staff',
+          'Employee-Student Employee',
+          'Employee-Research Faculty',
+          'Employee-Faculty',
+          'Employee-Staff',
+          'Employee-Student Employee',
+          'Employee-Student Faculty',
+          'Faculty-Student Faculty',
+          'Employee-Student Faculty',
+          'Staff-Staff',
+        ];
+        $student = [
+          'Student-Continuing Ed Credit Student',
+          'Student-Student',
+          'Affiliate-Confirmed Student',
+          'Affiliate-Confirmed Student',
+        ];
+        $myuserroles = $account->getRoles();
+        $affiliation_check = [];
+        foreach ($affiliation as $aff) {
+          if ((array_search($aff, $facstaff)) && (!array_search('dl facstaff', $myuserroles))) {
+            $account->addRole('dl_facstaff');
+          }
+          if ((array_search($aff, $student)) && (!array_search('dl student', $myuserroles))) {
+            $account->addRole('dl_student');
+          }
+          $affiliation_check[] = Xss::filter($aff);
+        }
+        $account->set('field_service_meow_affiliations', $affiliation_check);
+      }
+      else {
+        $account->set('field_service_meow_affiliations', 'unaffiliated');
+      }
+      if (!empty($result->result[0]->name)) {
+        $account->set('field_user_name', Xss::filter($result->result[0]->name));
+      }
+      if (!empty($result->result[0]->edu_status)) {
+        $account->set('field_user_affiliation', Xss::filter($result->result[0]->edu_status));
+      }
+      if (!empty($result->result[0]->primaryphone)) {
+        $account->set('field_user_phone', Xss::filter($result->result[0]->primaryphone));
+      }
+      if (!empty($result->result[0]->uniqueid_euuid_)) {
+        $account->set('field_service_meow_uuid', Xss::filter($result->result[0]->uniqueid_euuid_));
+      }
+      if (!empty($result->result[0]->sys_id)) {
+        $account->set('field_service_meow_sys_id', Xss::filter($result->result[0]->sys_id));
+      }
+      if (!empty($result->result[0]->u_dds_group->value)) {
+        $account->set('field_service_meow_dds_pod_group', Xss::filter($result->result[0]->u_dds_group->value));
+      }
+      $account->save();
+    }
+  }
+  // Some unaffilated users have no email. Fix this issue with service now api.
+  if (empty($account->getEmail())) {
+    $query = ['user_name' => $account->getAccountName()];
+    $result = $api_call->apiCallMeMaybe('sys_user', $query);
+    $account->setEmail(Xss::filter($result->result[0]->email));
+    $account->save();
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function servicenow_cron() {
+  $princess_dead_hour = FALSE;
+  // Run 2am.
+  if ( (date('G', time()) == 02) && (date('i', time()) >= 0) && (date('i', time()) < 15) ) {
+    $princess_dead_hour = TRUE;
+  }
+  $princess = new FetchPrincessList();
+  $princess_list = $princess->getData();
+  if ($princess_dead_hour || empty($princess_list)) {
+    $env = getenv('AH_SITE_ENVIRONMENT');
+    if ($env == 'prod') {
+      $teams = new TeamsAlert();
+      $teams->sendMessage('Re-caching princess list');
+    }
+    $query = \Drupal::database()->select('user__field_dds', 'us');
+    $query->fields('us', ['entity_id']);
+    $query->condition('us.field_dds_value', '1');
+    $result = $query->execute();
+    $users = $result->fetchCol();
+    foreach ($users as $user_dds) {
+      $dds_user = User::load($user_dds);
+      $dds_user->set('field_dds', 0);
+      $dds_user->save();
+    }
+    $princess = new FetchPrincessList();
+    $princess_cache = \Drupal::database()->delete('cache_default');
+    $princess_cache ->condition('cid', 'princess_list');
+    $princess_cache ->execute();
+
+    $princess = new FetchPrincessList();
+    \Drupal::logger('servicenow')->notice("Updated princess list");
+    $sn_settings = new ServicenowFetchSettings();
+    $drupal_list = $sn_settings->get();
+    if ($drupal_list) {
+      new CacheDrupalFormList();
+      \Drupal::logger('servicenow')->notice("Updated drupal form list");
+    }
+  }
+}

@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * @file
+ * Servicenow install settings.
+ */
+
+use Drupal\servicenow\Plugin\ServicenowFetchSettings;
+
+/**
+ * Implements hook_install().
+ */
+function servicenow_install() {
+  $sn_settings = new ServicenowFetchSettings();
+  $sn_settings->set(1);
+}
+
+/**
+ * Reset user tables to pull user data on next login.
+ */
+function servicenow_update_9000() {
+  \Drupal::database()->truncate('user__field_service_meow_affiliations')->execute();
+  \Drupal::database()->truncate('user__field_user_department')->execute();
+  \Drupal::database()->truncate('user__field_user_department2')->execute();
+}

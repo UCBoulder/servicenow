@@ -1,0 +1,7 @@
+servicenow.servicenow_form:
+  path: '/desktop-support-dept'
+  defaults:
+    _form: '\Drupal\servicenow\Form\ServicenowDepartment'
+    _title: 'Desktop Support Department'
+  requirements:
+    _role: 'authenticated'
