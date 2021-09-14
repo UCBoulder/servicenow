@@ -319,7 +319,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
         $name = $file['name'];
         $url = $file['url'];
         $mime = $file['mime'];
-        $upload_url = "$servicenow_url/api/now/attachment/file?table_name=incident&table_sys_id=0f3c72da1b66b0502f3633f8cd4bcb1f&file_name=ss1.png";
+        $upload_url = "$servicenow_url/api/now/attachment/file?table_name=incident&table_sys_id=0f3c72da1b66b0502f3633f8cd4bcb1f&file_name=ss1.jpg";
 
         $url = 'sites/default/files/Aerospace-Lab-Antenna.jpg';
         $url_open = file_get_contents($url);
