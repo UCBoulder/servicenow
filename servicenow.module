@@ -323,6 +323,8 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
         $mime = $file['mime'];
         $upload_url = "$servicenow_url/api/now/attachment/file?table_name=incident&table_sys_id=$sys_id&file_name=$name";
 
+        \Drupal::logger('servicenow')->error($url);
+        $url = 'system/files/webform/dds_desktop_support/20531/space-cat-llama-turtle-riding-burrito-random-galaxy.jpg';
         $url_open = file_get_contents($url);
 
         $ch_files = curl_init();

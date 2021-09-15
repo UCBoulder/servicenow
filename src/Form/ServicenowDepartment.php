@@ -191,7 +191,7 @@ class ServicenowDepartment extends ConfigFormBase {
     $args['sn_hidden_name'] = $profile_name;
     $args['department'] = $dept;
     if ($forcedev == "true") {
-      $args['forceddev'] = 'true';
+      $args['forcedev'] = 'true';
     }
     $url->setOptions(['query' => $args]);
     $response = new RedirectResponse($url->toString());
