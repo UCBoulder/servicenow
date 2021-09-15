@@ -482,12 +482,14 @@ function _servicenow_webform_data($element) {
       $content .= _servicenow_webform_options_key($element);
     }
     elseif ($element_type == 'managed_file' || $element_type == 'webform_audio_file' || $element_type == 'webform_video_file' || $element_type == 'webform_image_file' || $element_type == 'webform_document_file') {
-      $fids = $element['#value']['fids'];
-      foreach ($fids as $fid) {
-        $file_uri = $element['#files'][$fid]->getFileUri();
-        $file_url = file_create_url($file_uri);
-        $content .= $file_url;
-      }
+      # Currently sending over api and leaving out of content.
+      #$fids = $element['#value']['fids'];
+      #foreach ($fids as $fid) {
+      #  $file_uri = $element['#files'][$fid]->getFileUri();
+      #  $file_url = file_create_url($file_uri);
+      #  $content .= $file_url;
+      #}
+      return '';
     }
     elseif ($element_type == 'webform_custom_composite') {
       foreach ($element['#value'] as $comp_array) {
