@@ -321,7 +321,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
         $name = $file['name'];
         $url = $file['url'];
         $mime = $file['mime'];
-        $upload_url = "$servicenow_url/api/now/attachment/file?table_name=incident&table_sys_id=$sys_id&file_name=$name";
+        $upload_url = "$servicenow_url/api/now/attachment/file?table_name=$table_type&table_sys_id=$sys_id&file_name=$name";
 
         $url_open = file_get_contents($url);
 
