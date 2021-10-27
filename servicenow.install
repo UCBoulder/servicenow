@@ -13,6 +13,11 @@ use Drupal\servicenow\Plugin\ServicenowFetchSettings;
 function servicenow_install() {
   $sn_settings = new ServicenowFetchSettings();
   $sn_settings->set(1);
+
+  $pl_data = file_get_contents('../.keys/princess_list.txt', TRUE);
+  $row = ['data' => $pl_data];
+  $db_connection = \Drupal::database();
+  $db_connection->insert('princess_list')->fields($row)->execute();
 }
 
 /**
@@ -23,3 +28,30 @@ function servicenow_update_9000() {
   \Drupal::database()->truncate('user__field_user_department')->execute();
   \Drupal::database()->truncate('user__field_user_department2')->execute();
 }
+
+/**
+ * Create princess table.
+ */
+function servicenow_schema() {
+  $schema['princess_list'] = [
+    'description' => 'Princess List pulled daily',
+    'fields' => [
+      'id' => [
+        'description' => 'Table ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'data' => [
+        'description' => 'Pulled data from servicenow',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+      ],
+    ],
+    'primary key' => ['id'],
+    'auto increment' => 1,
+  ];
+  return $schema;
+}
+

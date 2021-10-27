@@ -25,6 +25,21 @@ class ServicenowFetchSettings {
   /**
    * Servicenow set settings.
    */
+  public function setpr($setting) {
+    $this->servicenowSettings->set('princess_rebuild', $setting);
+    $this->servicenowSettings->save(TRUE);
+  }
+
+  /**
+   * SErvicenow get settings.
+   */
+  public function getpr() {
+    return $this->servicenowSettings->get('princess_rebuild');
+  }
+
+  /**
+   * Servicenow set settings.
+   */
   public function set($setting) {
     $this->servicenowSettings->set('drupal_form_list', $setting);
     $this->servicenowSettings->save(TRUE);

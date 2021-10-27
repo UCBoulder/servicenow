@@ -696,6 +696,12 @@ function servicenow_cron() {
       $dds_user->set('field_dds', 0);
       $dds_user->save();
     }
+
+    // Start a reload.
+    // todo: get this down to running once
+    $princess_list = new \Drupal\servicenow\Plugin\PrincessList;
+    $princess_list->reload();
+
     $princess = new FetchPrincessList();
     $princess_cache = \Drupal::database()->delete('cache_default');
     $princess_cache ->condition('cid', 'princess_list');
