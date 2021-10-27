@@ -48,6 +48,13 @@ function servicenow_schema() {
         'not null' => TRUE,
         'size' => 'big',
       ],
+      'offset' => [
+        'description' => 'Offset for pulling data',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ],
     ],
     'primary key' => ['id'],
     'auto increment' => 1,
