@@ -14,7 +14,10 @@ function servicenow_install() {
   $sn_settings = new ServicenowFetchSettings();
   $sn_settings->set(1);
 
-  $pl_data = file_get_contents('../.keys/princess_list.txt', TRUE);
+  $filename = "princess_list.txt";
+  $uri = "public://$filename";
+  $directory_path = \Drupal::service('stream_wrapper_manager')->getViaUri($uri)->getDirectoryPath();
+  $pl_data = file_get_contents("$directory_path/$filename", TRUE);
   $row = ['data' => $pl_data];
   $db_connection = \Drupal::database();
   $db_connection->insert('princess_list')->fields($row)->execute();

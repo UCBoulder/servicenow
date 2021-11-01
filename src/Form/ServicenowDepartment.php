@@ -2,7 +2,7 @@
 
 namespace Drupal\servicenow\Form;
 
-use Drupal\servicenow\Plugin\FetchPrincessList;
+use Drupal\servicenow\Plugin\PrincessList;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Session\AccountInterface;
@@ -106,7 +106,7 @@ class ServicenowDepartment extends ConfigFormBase {
     $user_detail = $this->entityTypeManager->getStorage('user')->load($current_user->id());
     $user_dds_checkbox = $user_detail->get('field_dds')->getString();
     $current_user_sys_id = $user_detail->get('field_service_meow_sys_id')->getString();
-    $princess_list = new FetchPrincessList();
+    $princess_list = new princessList();
     $current_user_princess = isset($princess_list->getData()['users'][$current_user_sys_id]) ? $princess_list->getData()['users'][$current_user_sys_id] : NULL;
     $princess_list = $princess_list->getData()['departments'];
     $pl_departments = [];
