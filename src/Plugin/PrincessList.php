@@ -114,7 +114,10 @@ class PrincessList {
       $api_call = new ServicenowApiCall();
       $dds_service_member_query = 'u_dds_service_request_group_member';
       $set_limit = 500;
-      $query_limit = ['sysparm_limit' => $set_limit, 'sysparm_offset' => $this->plOffset];
+      $query_limit = [
+        'sysparm_limit' => $set_limit,
+        'sysparm_offset' => $this->plOffset,
+      ];
       $dds_service_members = $api_call->apiCallMeMaybe($dds_service_member_query, $query_limit, 0, FALSE);
       $dds_service_group_query = 'u_dds_service_request_group';
       $dds_service_group = $api_call->apiCallMeMaybe($dds_service_group_query, $query_limit, 0);
