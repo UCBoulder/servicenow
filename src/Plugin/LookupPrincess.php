@@ -17,7 +17,7 @@ class LookupPrincess {
    * Look up selected user by sysID.
    */
   public function __construct($sys_id) {
-    $princess = new FetchPrincessList();
+    $princess = new PrincessList();
     $princess_list = $princess->getData();
     $princess_list = $princess_list['users'];
     $this->princess = $princess_list[$sys_id];

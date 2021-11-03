@@ -13,6 +13,14 @@ use Drupal\servicenow\Plugin\ServicenowFetchSettings;
 function servicenow_install() {
   $sn_settings = new ServicenowFetchSettings();
   $sn_settings->set(1);
+
+  $filename = "princess_list.txt";
+  $uri = "public://$filename";
+  $directory_path = \Drupal::service('stream_wrapper_manager')->getViaUri($uri)->getDirectoryPath();
+  $pl_data = file_get_contents("$directory_path/$filename", TRUE);
+  $row = ['data' => $pl_data];
+  $db_connection = \Drupal::database();
+  $db_connection->insert('princess_list')->fields($row)->execute();
 }
 
 /**
@@ -23,3 +31,37 @@ function servicenow_update_9000() {
   \Drupal::database()->truncate('user__field_user_department')->execute();
   \Drupal::database()->truncate('user__field_user_department2')->execute();
 }
+
+/**
+ * Create princess table.
+ */
+function servicenow_schema() {
+  $schema['princess_list'] = [
+    'description' => 'Princess List pulled daily',
+    'fields' => [
+      'id' => [
+        'description' => 'Table ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'data' => [
+        'description' => 'Pulled data from servicenow',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+      ],
+      'offset' => [
+        'description' => 'Offset for pulling data',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ],
+    ],
+    'primary key' => ['id'],
+    'auto increment' => 1,
+  ];
+  return $schema;
+}
+

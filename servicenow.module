@@ -6,22 +6,20 @@
  */
 
 use Drupal\servicenow\Plugin\CacheDrupalFormList;
-use Drupal\webform\Entity\WebformSubmission;
 use Drupal\servicenow\Plugin\ServicenowApiCall;
 use Drupal\user\UserInterface;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Render\Markup;
-use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\servicenow\Plugin\ServicenowUrl;
 use Drupal\servicenow\Plugin\LookupPrincess;
 use Drupal\servicenow\Plugin\FetchDrupalFormList;
-use Drupal\servicenow\Plugin\FetchPrincessList;
 use Drupal\user\Entity\User;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Link;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\servicenow\Plugin\ServicenowFetchSettings;
+use Drupal\servicenow\Plugin\PrincessList;
 use Drupal\oit\Plugin\TeamsAlert;
 
 /**
@@ -113,7 +111,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
       $response->send();
     }
     else {
-      $princess = new FetchPrincessList();
+      $princess = new princessList();
       $princess_list = $princess->getData();
       $princess_list = $princess_list['users'];
       // Grab the user servicenow data that is using the form.
@@ -673,13 +671,14 @@ function servicenow_user_login(UserInterface $account) {
  * Implements hook_cron().
  */
 function servicenow_cron() {
+  $princess_list = new PrincessList();
+  $princess_list->cron();
   $princess_dead_hour = FALSE;
   // Run 2am.
-  if ( (date('G', time()) == 02) && (date('i', time()) >= 0) && (date('i', time()) < 15) ) {
+  if ( (date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 5) ) {
     $princess_dead_hour = TRUE;
   }
-  $princess = new FetchPrincessList();
-  $princess_list = $princess->getData();
+
   if ($princess_dead_hour || empty($princess_list)) {
     $env = getenv('AH_SITE_ENVIRONMENT');
     if ($env == 'prod') {
@@ -696,13 +695,10 @@ function servicenow_cron() {
       $dds_user->set('field_dds', 0);
       $dds_user->save();
     }
-    $princess = new FetchPrincessList();
-    $princess_cache = \Drupal::database()->delete('cache_default');
-    $princess_cache ->condition('cid', 'princess_list');
-    $princess_cache ->execute();
 
-    $princess = new FetchPrincessList();
-    \Drupal::logger('servicenow')->notice("Updated princess list");
+    // Start a reload.
+    $princess_list->reload();
+
     $sn_settings = new ServicenowFetchSettings();
     $drupal_list = $sn_settings->get();
     if ($drupal_list) {
