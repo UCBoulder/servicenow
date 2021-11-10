@@ -196,6 +196,7 @@ class ServicenowDepartment extends ConfigFormBase {
     $url->setOptions(['query' => $args]);
     $response = new RedirectResponse($url->toString());
     $response->send();
+    exit;
   }
 
 }

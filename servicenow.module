@@ -109,6 +109,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
       $url = Url::fromRoute('servicenow.servicenow_form');
       $response = new RedirectResponse($url->toString());
       $response->send();
+      exit;
     }
     else {
       $princess = new princessList();
