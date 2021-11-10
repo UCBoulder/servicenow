@@ -674,13 +674,21 @@ function servicenow_cron() {
   $princess_list = new PrincessList();
   $princess_list->cron();
   $princess_dead_hour = FALSE;
-  // Run 2am.
-  if ( (date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 5) ) {
-    $princess_dead_hour = TRUE;
+  $env = getenv('AH_SITE_ENVIRONMENT');
+  if ($env == 'prod') {
+    // Run 1am.
+    if ((date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
+      $princess_dead_hour = TRUE;
+    }
+  }
+  else {
+    // Run at Midnight.
+    if ((date('G', time()) == 00) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
+      $princess_dead_hour = TRUE;
+    }
   }
 
   if ($princess_dead_hour || empty($princess_list)) {
-    $env = getenv('AH_SITE_ENVIRONMENT');
     if ($env == 'prod') {
       $teams = new TeamsAlert();
       $teams->sendMessage('Re-caching princess list');
