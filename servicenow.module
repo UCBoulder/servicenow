@@ -690,10 +690,6 @@ function servicenow_cron() {
   }
 
   if ($princess_dead_hour || empty($princess_list)) {
-    if ($env == 'prod') {
-      $teams = new TeamsAlert();
-      $teams->sendMessage('Re-caching princess list');
-    }
     $query = \Drupal::database()->select('user__field_dds', 'us');
     $query->fields('us', ['entity_id']);
     $query->condition('us.field_dds_value', '1');

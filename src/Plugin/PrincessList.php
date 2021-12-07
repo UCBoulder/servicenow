@@ -155,7 +155,7 @@ class PrincessList {
       if (empty($dds_service_members->result) && empty($dds_service_group->result)) {
         $this->princessSettings->setpr(0);
         $teams = new TeamsAlert();
-        $teams->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
+        $teams->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset", ['prod']);
         \Drupal::logger('servicenow')->notice("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
       }
       else {
@@ -191,7 +191,7 @@ class PrincessList {
     $row = ['data' => $princess_list];
     $this->princessDbConnection->insert('princess_list')->fields($row)->execute();
     $teams = new TeamsAlert();
-    $teams->sendMessage("Princess reload start");
+    $teams->sendMessage("Princess reload start", ['prod']);
     \Drupal::logger('servicenow')->notice("Princess reload start");
   }
 
