@@ -20,7 +20,6 @@ use Drupal\Core\Link;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\servicenow\Plugin\ServicenowFetchSettings;
 use Drupal\servicenow\Plugin\PrincessList;
-use Drupal\oit\Plugin\TeamsAlert;
 
 /**
  * Implements hook_mail().
