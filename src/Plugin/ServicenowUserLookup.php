@@ -2,7 +2,6 @@
 
 namespace Drupal\servicenow\Plugin;
 
-use Drupal\servicenow\Plugin\ServicenowApiCall;
 use Drupal\Component\Utility\Xss;
 
 /**
@@ -25,7 +24,7 @@ class ServicenowUserLookup {
         $query_dept = ['sys_id' => $result->result[0]->department->value];
         $dept = $api_call->apiCallMeMaybe('cmn_department', $query_dept);
         $deptartment = !empty($dept->result[0]->name) ? Xss::filter($dept->result[0]->name) : '';
-        $account->set('field_user_department', $deptartment , TRUE);
+        $account->set('field_user_department', $deptartment, TRUE);
         $account->set('field_service_meow_department_id', Xss::filter($result->result[0]->department->value), TRUE);
         if (!empty($result->result[0]->u_secondarydepartment->value)) {
           $query_dept2 = ['sys_id' => $result->result[0]->u_secondarydepartment->value];
@@ -33,7 +32,8 @@ class ServicenowUserLookup {
           $department2 = Xss::filter($dept2->result[0]->name);
           $account->set('field_user_department2', $department2, TRUE);
           $account->set('field_service_meow_department2id', Xss::filter($result->result[0]->department->value), TRUE);
-        } else {
+        }
+        else {
           $department2 = '';
         }
         // Set oit_administration role if dept matches correctly.
@@ -103,7 +103,8 @@ class ServicenowUserLookup {
       }
       $account->save();
     }
-    // Some unaffilated users have no email. Fix this issue with service now api.
+    // Some unaffilated users have no email.
+    // Fix this issue with service now api.
     if (empty($account->getEmail())) {
       $query = ['user_name' => $account->getAccountName()];
       $result = $api_call->apiCallMeMaybe('sys_user', $query);
