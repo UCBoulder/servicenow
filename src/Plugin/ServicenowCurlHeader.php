@@ -26,7 +26,7 @@ class ServicenowCurlHeader {
         $headers['http_code'] = $line;
       }
       else {
-        list ($key, $value) = explode(': ', $line);
+        [$key, $value] = explode(': ', $line);
 
         $headers[$key] = $value;
       }

@@ -107,7 +107,7 @@ class ServicenowDepartment extends ConfigFormBase {
     $user_dds_checkbox = $user_detail->get('field_dds')->getString();
     $current_user_sys_id = $user_detail->get('field_service_meow_sys_id')->getString();
     $princess_list = new princessList();
-    $current_user_princess = isset($princess_list->getData()['users'][$current_user_sys_id]) ? $princess_list->getData()['users'][$current_user_sys_id] : NULL;
+    $current_user_princess = $princess_list->getData()['users'][$current_user_sys_id] ?? NULL;
     $princess_list = $princess_list->getData()['departments'];
     $pl_departments = [];
     $pretty_princess = 0;
@@ -187,7 +187,7 @@ class ServicenowDepartment extends ConfigFormBase {
     $forcedev = Xss::filter($this->requestStack->getCurrentRequest()->get('forcedev'));
     $url = Url::fromRoute('entity.node.canonical', ['node' => 16699]);
     $user = $this->userStorage->load($this->account->id());
-    $profile_name = isset($user->field_user_name->value) ? $user->field_user_name->value : '';
+    $profile_name = $user->field_user_name->value ?? '';
     $args['sn_hidden_name'] = $profile_name;
     $args['department'] = $dept;
     if ($forcedev == "true") {
