@@ -65,3 +65,9 @@ function servicenow_schema() {
   return $schema;
 }
 
+/**
+ * Delete field_service_meow_sys_id field.
+ */
+function servicenow_update_9001() {
+  \Drupal\field\Entity\FieldStorageConfig::loadByName('user', 'field_service_meow_sys_id')->delete();
+}
