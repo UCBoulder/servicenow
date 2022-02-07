@@ -55,7 +55,6 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
   $current_user = \Drupal::currentUser();
   $user_roles = $current_user->getRoles();
   if (!in_array("administrator", $user_roles) && !in_array("pseudo_admin", $user_roles) && $form_id == 'user_form') {
-    $form['field_service_meow_uuid']['#access'] = FALSE;
     $form['field_service_meow_sys_id']['#access'] = FALSE;
     $form['field_service_meow_department_id']['#access'] = FALSE;
     $form['field_service_meow_dds_pod_group']['#access'] = FALSE;

@@ -92,9 +92,6 @@ class ServicenowUserLookup {
       if (!empty($result->result[0]->primaryphone)) {
         $account->set('field_user_phone', Xss::filter($result->result[0]->primaryphone));
       }
-      if (!empty($result->result[0]->uniqueid_euuid_)) {
-        $account->set('field_service_meow_uuid', Xss::filter($result->result[0]->uniqueid_euuid_));
-      }
       if (!empty($result->result[0]->sys_id)) {
         $account->set('field_service_meow_sys_id', Xss::filter($result->result[0]->sys_id));
       }
