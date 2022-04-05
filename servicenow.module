@@ -98,7 +98,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     }
   }
   $logged_in = $current_user->isAuthenticated();
-  if (($form_id == 'webform_submission_dds_desktop_support_add_form' || $form_id == 'webform_submission_dds_desktop_support_node_16699_add_form') && $logged_in) {
+  if ($form_id == 'webform_submission_dds_desktop_support_node_16699_add_form' && $logged_in) {
     $user_detail = User::load($current_user->id());
     // kint($user_detail->get('field_service_meow_sys_id')->getString());
     $request = \Drupal::request();
