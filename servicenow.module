@@ -80,7 +80,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
         }
       }
     }
-    $env = getenv('AH_SITE_ENVIRONMENT');
+    $env = getenv('PANTHEON_ENVIRONMENT');
     switch ($env) {
       case 'dev':
         $url = Url::fromUri('https://morty-oit.colorado.edu');
@@ -579,8 +579,8 @@ function servicenow_cron() {
   $princess_list = new PrincessList();
   $princess_list->cron();
   $princess_dead_hour = FALSE;
-  $env = getenv('AH_SITE_ENVIRONMENT');
-  if ($env == 'prod') {
+  $env = getenv('PANTHEON_ENVIRONMENT');
+  if ($env == 'live') {
     // Run 1am.
     if ((date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
       $princess_dead_hour = TRUE;
