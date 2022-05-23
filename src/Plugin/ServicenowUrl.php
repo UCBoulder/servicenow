@@ -22,12 +22,12 @@ class ServicenowUrl {
     // Set by Acquia servers and needs to be set by local server.
     $env = getenv('PANTHEON_ENVIRONMENT');
     $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
-    if ($env == 'test' || $env == 'local' || $env == 'lando' || $forcedev == "true") {
-      $request = 'https://coloradodev.service-now.com';
-    }
-    else {
+    if ($env == 'live' || $env == 'dev' || $forcedev != "true") {
       // Service meow LIVE.
       $request = 'https://colorado.service-now.com';
+    }
+    else {
+      $request = 'https://coloradodev.service-now.com';
     }
     $this->url = $request;
   }

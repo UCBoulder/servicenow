@@ -81,20 +81,15 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
       }
     }
     $env = getenv('PANTHEON_ENVIRONMENT');
-    switch ($env) {
-      case 'dev':
-        $url = Url::fromUri('https://morty-oit.colorado.edu');
-        $morty_link = Link::fromTextAndUrl(t('morty-oit'), $url)->toString();
-        \Drupal::messenger()->addMessage(t("Submits to Servicenow production environment. Use %link to use dev.", ['%link' => $morty_link]));
-        break;
-
-      case 'test':
-      case 'local':
-      case 'lando':
-        $url = Url::fromUri('https://rick-oit.colorado.edu');
-        $rick_link = Link::fromTextAndUrl(t('rick-oit'), $url)->toString();
-        \Drupal::messenger()->addMessage(t("Submits to Servicenow dev environment. Use %link to use production.", ['%link' => $rick_link]));
-        break;
+    if ($env == 'dev') {
+      $url = Url::fromUri('https://morty-oit.colorado.edu');
+      $morty_link = Link::fromTextAndUrl(t('morty-oit'), $url)->toString();
+      \Drupal::messenger()->addMessage(t("Submits to Servicenow production environment. Use %link to use dev.", ['%link' => $morty_link]));
+    }
+    elseif ($env != 'live') {
+      $url = Url::fromUri('https://rick-oit.colorado.edu');
+      $rick_link = Link::fromTextAndUrl(t('rick-oit'), $url)->toString();
+      \Drupal::messenger()->addMessage(t("Submits to Servicenow dev environment. Use %link to use production.", ['%link' => $rick_link]));
     }
   }
   $logged_in = $current_user->isAuthenticated();
