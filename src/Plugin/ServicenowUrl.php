@@ -19,10 +19,13 @@ class ServicenowUrl {
    * Function to determine which Servicenow URL to use.
    */
   public function __construct() {
-    // Set by Acquia servers and needs to be set by local server.
+    // Set by Pantheon servers and needs to be set by local server.
     $env = getenv('PANTHEON_ENVIRONMENT');
     $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
-    if ($env == 'live' || $env == 'dev' || $forcedev != "true") {
+    if ($forcedev == "true") {
+      $request = 'https://coloradodev.service-now.com';
+    }
+    elseif ($env == 'live' || $env == 'dev') {
       // Service meow LIVE.
       $request = 'https://colorado.service-now.com';
     }
