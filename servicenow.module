@@ -69,7 +69,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     // but before the second Webform handler. Pop off the first one and add
     // ours second.
     $sn_table_type = isset($form['elements']['sn_table']['#default_value']) ? $form['elements']['sn_table']['#default_value'] : 'incident';
-    if ($sn_table_type == 'incident' || 'ticket' || 'u_gnrl_req') {
+    if ($sn_table_type == 'incident' || 'ticket' || 'u_gnrl_req' || 'u_sec_task') {
       foreach (array_keys($form['actions']) as $action) {
         if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
           // If node 16699 set the impact field.
