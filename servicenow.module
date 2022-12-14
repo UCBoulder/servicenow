@@ -262,7 +262,8 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   }
 
   $content_encode = json_encode($content);
-  $construct_url = new ServicenowUrl();
+  $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
+  $construct_url = new ServicenowUrl($forcedev);
   $servicenow_url = $construct_url->getUrl();
   $post_url = $servicenow_url . '/api/now/table/' . $table_type;
   $meow_key = trim(Drupal::service('key.repository')->getKey('meow_key')->getKeyValue());

@@ -18,11 +18,10 @@ class ServicenowUrl {
   /**
    * Function to determine which Servicenow URL to use.
    */
-  public function __construct() {
+  public function __construct($forcedev = 'false') {
     // Set by Acquia servers and needs to be set by local server.
     $env = getenv('AH_SITE_ENVIRONMENT');
-    $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
-    if ($env == 'test' || $env == 'local' || $env == 'lando' || $forcedev == "true") {
+    if ($env == 'test' || $env == 'local' || $env == 'lando' || $forcedev == 'true') {
       $request = 'https://coloradodev.service-now.com';
     }
     else {
