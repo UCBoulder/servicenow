@@ -73,13 +73,14 @@ class ServicenowDepartment extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container) {
-    return new static(
+  public static function create(ContainerInterface $container): self {
+    $self = new self(
       $container->get('request_stack'),
       $container->get('current_user'),
       $container->get('entity_type.manager'),
       $container->get('entity_type.manager')->getStorage('user')
     );
+    return $self;
   }
 
   /**
