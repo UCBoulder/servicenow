@@ -3,6 +3,7 @@
 namespace Drupal\servicenow\Plugin;
 
 use Drupal\oit\Plugin\TeamsAlert;
+use Drupal\Component\Utility\Xss;
 
 /**
  * Make servicenow api call.
@@ -31,7 +32,8 @@ class ServicenowApiCall {
    * Function to sort the curl headers.
    */
   public function __construct() {
-    $construct_url = new ServicenowUrl();
+    $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
+    $construct_url = new ServicenowUrl($forcedev);
     $this->meowUrl = $construct_url->getUrl();
     $this->meowKey = trim(\Drupal::service('key.repository')->getKey('meow_key')->getKeyValue());
   }
