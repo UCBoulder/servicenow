@@ -10,6 +10,7 @@ use Drupal\user\UserInterface;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Render\Markup;
 use Drupal\servicenow\Plugin\ServicenowUrl;
+use Drupal\servicenow\Plugin\ServicenowKey;
 use Drupal\servicenow\Plugin\LookupPrincess;
 use Drupal\servicenow\Plugin\FetchDrupalFormList;
 use Drupal\user\Entity\User;
@@ -266,7 +267,8 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   $construct_url = new ServicenowUrl($forcedev);
   $servicenow_url = $construct_url->getUrl();
   $post_url = $servicenow_url . '/api/now/table/' . $table_type;
-  $meow_key = trim(Drupal::service('key.repository')->getKey('meow_key')->getKeyValue());
+  $ServicenowKey = new ServicenowKey();
+  $meow_key = $ServicenowKey->getKey();
   // Initialize curl handle.
   $ch = curl_init();
   curl_setopt($ch, CURLOPT_USERPWD, $meow_key);
