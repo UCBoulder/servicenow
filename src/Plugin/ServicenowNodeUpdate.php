@@ -15,6 +15,13 @@ class ServicenowNodeUpdate {
   private $key;
 
   /**
+   * Field HTML.
+   *
+   * @var string
+   */
+  private $descriptionHtml;
+
+  /**
    * Function to decrypt key and set.
    */
   public function __construct() {
@@ -35,25 +42,35 @@ class ServicenowNodeUpdate {
                      ->execute();
     foreach ($results as $result) {
       $node = \Drupal::entityTypeManager()->getStorage('node')->load($result);
-      $body = $node->get('body')->value;
-      $impact_field = $node->get('field_service_alert_impact')->value;
-      $impact = $impact_field !== NULL ? "<h2>Impact</h2><p>$impact_field</p>" : '';
-      $scope_field = $node->get('field_service_alert_scope')->value;
-      $scope = $scope_field !== NULL ? "<h2>Scope</h2><p>$scope_field</p>" : '';
-      $aff_services_field = $node->get('field_service_alert_aff_serv')->value;
-      $aff_services = $aff_services_field !== NULL ? "<h2>Affected Services</h2><p>$aff_services_field</p>" : '';
-      $aff_buildings_field = $node->get('field_service_alert_aff_bldg')->value;
-      $aff_buildings = $aff_buildings_field !== NULL ? "<h2>Affected Buildings</h2><p>$aff_buildings_field</p>" : '';
-      $main_impact_field = $node->get('field_service_alert_main_impact')->value;
-      $main_impact = $main_impact_field !== NULL ? "<h2>Main Impact</h2><p>$main_impact_field</p>" : '';
-      $vendor_field = $node->get('field_service_alert_add_vendor')->value;
-      $vendor = $vendor !== NULL ? "<h2>Vendor</h2><p>$vendor_field</p>" : '';
-      $updated_body = $body . $impact . $scope . $aff_services . $aff_buildings . $main_impact . $vendor_field;
-      $nid = $node->id();
-      kint($nid);
-      kint($vendor);
-      kint($updated_body);
+      $this->descriptionHtml = $node->get('body')->value;
+      $fields = [
+        'field_service_alert_impact' => 'Impact',
+        'field_service_alert_scope' => 'Scope',
+        'field_service_alert_aff_serv' => 'Affected Services',
+        'field_service_alert_aff_bldg' => 'Affected Buildings',
+        'field_service_alert_main_impact' => 'For More Information',
+        'field_service_alert_add_vendor' => 'Additional Information from Vendor',
+        'field_service_alert_add_uis' => 'Additional Information from UIS',
+      ];
+      foreach ($fields as $key => $field) {
+        $this->descriptionHtml .= $this->getBodyField($node, $key, $field);
+      }
+      $node->set('body', $this->descriptionHtml);
+      $node->save();
     }
+  }
+
+  /**
+   * Return field with proper header and html.
+   */
+  private function getBodyField($node, $field, $header) {
+    $value = $node->get($field)->value;
+    $html = '';
+    if ($value !== NULL) {
+      $html = "<h2>$header</h2>$value";
+      $node->set($field, '');
+    }
+    return $html;
   }
 
   /**
