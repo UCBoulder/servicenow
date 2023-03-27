@@ -185,7 +185,9 @@ class ServicenowDepartment extends ConfigFormBase {
    * {@inheritdoc}
    */
   private function forwardToWebform($dept) {
-    $forcedev = Xss::filter($this->requestStack->getCurrentRequest()->get('forcedev'));
+    $forcedev = !empty($this->requestStack->getCurrentRequest()->get('forcedev')) ?
+                Xss::filter($this->requestStack->getCurrentRequest()->get('forcedev')) :
+                0;
     $url = Url::fromRoute('entity.node.canonical', ['node' => 16699]);
     $user = $this->userStorage->load($this->account->id());
     $profile_name = $user->field_user_name->value ?? '';

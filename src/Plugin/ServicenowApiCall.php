@@ -32,7 +32,9 @@ class ServicenowApiCall {
    * Function to sort the curl headers.
    */
   public function __construct() {
-    $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
+    $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
+                Xss::filter(\Drupal::request()->query->get('forcedev')->get('forcedev')) :
+                0;
     $construct_url = new ServicenowUrl($forcedev);
     $this->meowUrl = $construct_url->getUrl();
     $servicenowKey = new ServicenowKey();

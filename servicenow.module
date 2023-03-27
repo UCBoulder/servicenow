@@ -181,7 +181,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     $form_item_type = isset($element['#type']) ? $element['#type'] : 'non-item';
     $form_key = Xss::filter($key);
     if ($form_item_type == 'fieldset' || $form_item_type == 'container' || $form_item_type == 'details' || $form_item_type == 'webform_section') {
-      $description .= _servicenow_webform_fieldset($element, $form_item_type);
+      $description .= _servicenow_webform_fieldset($element);
     }
     elseif ($form_item_type == 'webform_flexbox' || $form_item_type == 'webform_address' || $form_item_type == 'webform_contact') {
       $description .= _servicenow_webform_flexbox($element);
@@ -263,7 +263,9 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   }
 
   $content_encode = json_encode($content);
-  $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
+  $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
+              Xss::filter(\Drupal::request()->query->get('forcedev')->get('forcedev')) :
+              0;
   $construct_url = new ServicenowUrl($forcedev);
   $servicenow_url = $construct_url->getUrl();
   $post_url = $servicenow_url . '/api/now/table/' . $table_type;
@@ -407,12 +409,12 @@ function _servicenow_webform_options_key($element) {
 /**
  * Function to deal with nested fields.
  */
-function _servicenow_webform_fieldset($element, $section_type) {
+function _servicenow_webform_fieldset($element) {
   $description = isset($element['#title']) ? Xss::filter($element['#title']) . "\n" : '';
   foreach ($element as $form_fs_val) {
     $form_item_type = isset($form_fs_val['#type']) ? $form_fs_val['#type'] : 'non-item';
     if ($form_item_type == 'fieldset' || $form_item_type == 'container' || $form_item_type == 'details' || $form_item_type == 'webform_section') {
-      $description .= _servicenow_webform_fieldset($form_fs_val, $form_item_type);
+      $description .= _servicenow_webform_fieldset($form_fs_val);
     }
     elseif ($form_item_type != 'non-item') {
       $description .= _servicenow_webform_data($form_fs_val);
