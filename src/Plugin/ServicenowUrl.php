@@ -2,8 +2,6 @@
 
 namespace Drupal\servicenow\Plugin;
 
-use Drupal\Component\Utility\Xss;
-
 /**
  * Provide proper url depending on environment.
  */

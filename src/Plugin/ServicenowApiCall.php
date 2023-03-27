@@ -35,8 +35,8 @@ class ServicenowApiCall {
     $forcedev = Xss::filter(\Drupal::request()->query->get('forcedev'));
     $construct_url = new ServicenowUrl($forcedev);
     $this->meowUrl = $construct_url->getUrl();
-    $ServicenowKey = new ServicenowKey();
-    $this->meowKey = $ServicenowKey->getKey();
+    $servicenowKey = new ServicenowKey();
+    $this->meowKey = $servicenowKey->getKey();
   }
 
   /**
