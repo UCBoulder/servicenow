@@ -264,7 +264,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
 
   $content_encode = json_encode($content);
   $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
-              Xss::filter(\Drupal::request()->query->get('forcedev')->get('forcedev')) :
+              Xss::filter(\Drupal::request()->query->get('forcedev')) :
               0;
   $construct_url = new ServicenowUrl($forcedev);
   $servicenow_url = $construct_url->getUrl();
