@@ -71,3 +71,11 @@ function servicenow_schema() {
 function servicenow_update_9001() {
   \Drupal\field\Entity\FieldStorageConfig::loadByName('user', 'field_service_meow_uuid')->delete();
 }
+
+/**
+ * Implements hook_update().
+ */
+function servicenow_update_9002() {
+  $config = \Drupal::configFactory()->getEditable('servicenow.settings');
+  $config->set('servicenow_api_prod', TRUE)->save();
+}
