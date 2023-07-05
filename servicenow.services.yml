@@ -1,0 +1,7 @@
+services:
+  servicenow.key:
+    class: Drupal\servicenow\Plugin\ServicenowKey
+    arguments: ['@key.repository', '@encryption']
+  servicenow.url:
+    class: Drupal\servicenow\Plugin\ServicenowUrl
+    arguments: ['@config.factory']

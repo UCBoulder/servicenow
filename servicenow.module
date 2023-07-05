@@ -9,14 +9,11 @@ use Drupal\servicenow\Plugin\CacheDrupalFormList;
 use Drupal\user\UserInterface;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Render\Markup;
-use Drupal\servicenow\Plugin\ServicenowUrl;
-use Drupal\servicenow\Plugin\ServicenowKey;
 use Drupal\servicenow\Plugin\LookupPrincess;
 use Drupal\servicenow\Plugin\FetchDrupalFormList;
 use Drupal\user\Entity\User;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
-use Drupal\Core\Link;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Drupal\servicenow\Plugin\ServicenowFetchSettings;
 use Drupal\servicenow\Plugin\PrincessList;
@@ -256,11 +253,9 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
     Xss::filter(\Drupal::request()->query->get('forcedev')) :
     0;
-  $construct_url = new ServicenowUrl($forcedev);
-  $servicenow_url = $construct_url->getUrl();
+  $servicenow_url  = \Drupal::service('servicenow.url')->getUrl($forcedev);
   $post_url = $servicenow_url . '/api/now/table/' . $table_type;
-  $ServicenowKey = new ServicenowKey();
-  $meow_key = $ServicenowKey->getKey();
+  $meow_key = \Drupal::service('servicenow.key')->getKey();
   // Initialize curl handle.
   $ch = curl_init();
   curl_setopt($ch, CURLOPT_USERPWD, $meow_key);
