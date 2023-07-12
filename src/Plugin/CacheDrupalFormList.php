@@ -19,7 +19,7 @@ class CacheDrupalFormList {
    * Pull drupal form list from Servicenow and cache it.
    */
   public function __construct() {
-    $api_call = new ServicenowApiCall();
+    $api_call = \Drupal::service('servicenow.api.call');
     $drupal_form_query = 'u_drupal_form';
     // $drupal_form_query .= '?sysparm_limit=1';
     $drupal_forms = $api_call->apiCallMeMaybe(0, 0, $drupal_form_query, FALSE);

@@ -8,3 +8,6 @@ services:
   servicenow.fetch.settings:
     class: Drupal\servicenow\Plugin\ServicenowFetchSettings
     arguments: ['@config.factory']
+  servicenow.api.call:
+    class: Drupal\servicenow\Plugin\ServicenowApiCall
+    arguments: ['@request_stack', '@servicenow.url', '@servicenow.key', '@logger.factory', '@oit.teamsalert']

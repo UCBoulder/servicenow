@@ -4,39 +4,73 @@ namespace Drupal\servicenow\Plugin;
 
 use Drupal\oit\Plugin\TeamsAlert;
 use Drupal\Component\Utility\Xss;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Drupal\servicenow\Plugin\ServicenowUrl;
+use Drupal\servicenow\Plugin\ServicenowKey;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * Make servicenow api call.
  */
 class ServicenowApiCall {
+
   /**
-   * Return api results.
+   * The Teams logging channel.
    *
-   * @var array
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
    */
-  private $apiResult;
+  protected $logger;
+
+  /**
+   * The request stack.
+   *
+   * @var \Symfony\Component\HttpFoundation\RequestStack
+   */
+  protected $requestStack;
+
   /**
    * Servicenow url.
    *
-   * @var string
+   * @var \Drupal\servicenow\Plugin\ServicenowUrl
    */
   private $meowUrl;
+
   /**
    * Servicenow api key.
    *
-   * @var string
+   * @var \Drupal\servicenow\Plugin\ServicenowKey
    */
   private $meowKey;
 
   /**
+   * Servicenow Teams Alert.
+   *
+   * @var \Drupal\oit\Plugin\TeamsAlert
+   */
+  private $teamsAlert;
+
+  /**
    * Function to sort the curl headers.
    */
-  public function __construct() {
-    $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
-                Xss::filter(\Drupal::request()->query->get('forcedev')->get('forcedev')) :
+  public function __construct(
+    RequestStack $request_stack,
+    ServicenowUrl $servicenow_url,
+    ServicenowKey $servicenow_key,
+    LoggerChannelFactoryInterface $channelFactory,
+    TeamsAlert $teams_alert
+  ) {
+    $this->logger = $channelFactory->get('servicenow');
+    $this->requestStack = $request_stack;
+    $this->meowUrl = $servicenow_url;
+    $this->meowKey = $servicenow_key;
+    $this->teamsAlert = $teams_alert;
+
+    $forcedev = !empty($this->requestStack->getCurrentRequest()->get('forcedev')) ?
+                Xss::filter($this->requestStack->getCurrentRequest()->get('forcedev')) :
                 0;
-    $this->meowUrl = \Drupal::service('servicenow.url')->getUrl($forcedev);
-    $this->meowKey = \Drupal::service('servicenow.key')->getKey();
+
+    $this->meowUrl = $this->meowUrl->getUrl($forcedev);
+    $this->meowKey = $this->meowKey->getKey();
   }
 
   /**
@@ -81,9 +115,8 @@ class ServicenowApiCall {
       $result->status = 'failure';
     }
     if (($result->status == 'failure') || (empty($result))) {
-      \Drupal::logger('servicenow')->notice('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $request);
-      $teams = new TeamsAlert();
-      $teams->sendMessage('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $request);
+      $this->logger->notice('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $request);
+      $this->teamsAlert->sendMessage('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $request);
       return NULL;
     }
     else {

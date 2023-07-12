@@ -110,7 +110,7 @@ class PrincessList {
     }
     if ($this->princessReload) {
       $pl_data = json_decode($this->plEnd, TRUE);
-      $api_call = new ServicenowApiCall();
+      $api_call = \Drupal::service('servicenow.api.call');
       $dds_service_member_query = 'u_dds_service_request_group_member';
       $set_limit = 500;
       $query_limit = [

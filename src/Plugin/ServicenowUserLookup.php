@@ -17,7 +17,7 @@ class ServicenowUserLookup {
     $name = [
       'user_name' => $acct_name,
     ];
-    $api_call = new ServicenowApiCall();
+    $api_call = \Drupal::service('servicenow.api.call');
     $result = $api_call->apiCallMeMaybe('sys_user', $name);
     if (!empty($result->result)) {
       if (isset($result->result[0]->department->value)) {
