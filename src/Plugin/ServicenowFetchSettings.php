@@ -2,10 +2,20 @@
 
 namespace Drupal\servicenow\Plugin;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
+
 /**
  * Config pull settings.
  */
 class ServicenowFetchSettings {
+
+  /**
+   * Config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  private $configFactory;
+
   /**
    * Servicenow settings stored in variable.
    *
@@ -16,10 +26,9 @@ class ServicenowFetchSettings {
   /**
    * Pull the drupal form list from cache or servicenow if not cached.
    */
-  public function __construct() {
-    $config_factory = \Drupal::configFactory();
-    $config = $config_factory->getEditable('servicenow.settings');
-    $this->servicenowSettings = $config;
+  public function __construct(ConfigFactoryInterface $config_factory) {
+    $this->configFactory = $config_factory;
+    $this->servicenowSettings = $this->configFactory->getEditable('servicenow.settings');
   }
 
   /**

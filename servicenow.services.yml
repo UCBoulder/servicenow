@@ -5,3 +5,6 @@ services:
   servicenow.url:
     class: Drupal\servicenow\Plugin\ServicenowUrl
     arguments: ['@config.factory']
+  servicenow.fetch.settings:
+    class: Drupal\servicenow\Plugin\ServicenowFetchSettings
+    arguments: ['@config.factory']

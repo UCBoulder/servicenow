@@ -15,7 +15,6 @@ use Drupal\user\Entity\User;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Drupal\servicenow\Plugin\ServicenowFetchSettings;
 use Drupal\servicenow\Plugin\PrincessList;
 use Drupal\servicenow\Plugin\ServicenowUserLookup;
 
@@ -225,7 +224,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     $content['u_intg_table'] = 'u_drupal_form';
     $content['u_intg_assignment'] = $form_list[$drupal_form_array_id];
   } else {
-    $sn_settings = new ServicenowFetchSettings();
+    $sn_settings = \Drupal::service('servicenow.fetch.settings');
     $sn_settings->set(1);
   }
   $content['description'] = $description;
@@ -578,7 +577,7 @@ function servicenow_cron() {
     // Start a reload.
     $princess_list->reload();
 
-    $sn_settings = new ServicenowFetchSettings();
+    $sn_settings = \Drupal::service('servicenow.fetch.settings');
     $drupal_list = $sn_settings->get();
     if ($drupal_list) {
       new CacheDrupalFormList();

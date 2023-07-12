@@ -82,7 +82,7 @@ class PrincessList {
     $pl_data = $result->fetchAllKeyed();
     $this->princessFirstKey = count($pl_data) >= 3 ? array_key_first($pl_data) : 0;
     $this->princessLastKey = array_key_last($pl_data);
-    $this->princessSettings = new ServicenowFetchSettings();
+    $this->princessSettings = \Drupal::service('servicenow.fetch.settings');
     $this->princessReload = $this->princessSettings->getpr();
 
     $offset = $this->princessDbConnection->select('princess_list', 'pl')

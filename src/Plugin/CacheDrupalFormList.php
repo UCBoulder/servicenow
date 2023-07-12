@@ -41,7 +41,7 @@ class CacheDrupalFormList {
     // Stores in cache table and expires after 365 days.
     $expire = \Drupal::time()->getRequestTime() + (3600 * 24 * 365);
     \Drupal::cache()->set('drupal_form_list', $drupal_list, $expire);
-    $sn_settings = new ServicenowFetchSettings();
+    $sn_settings = \Drupal::service('servicenow.fetch.settings');
     $sn_settings->set(0);
     $this->cachedData = $drupal_list;
   }

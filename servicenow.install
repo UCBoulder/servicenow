@@ -5,13 +5,11 @@
  * Servicenow install settings.
  */
 
-use Drupal\servicenow\Plugin\ServicenowFetchSettings;
-
 /**
  * Implements hook_install().
  */
 function servicenow_install() {
-  $sn_settings = new ServicenowFetchSettings();
+  $sn_settings = \Drupal::service('servicenow.fetch.settings');
   $sn_settings->set(1);
 
   $filename = "princess_list.txt";
