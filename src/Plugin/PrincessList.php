@@ -4,10 +4,8 @@ namespace Drupal\servicenow\Plugin;
 
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Database\Connection;
-use Drupal\servicenow\Plugin\ServicenowFetchSettings;
-use Drupal\servicenow\Plugin\ServicenowApiCall;
-use Drupal\oit\Plugin\TeamsAlert;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\oit\Plugin\TeamsAlert;
 
 /**
  * Combined Princess functions into one class.

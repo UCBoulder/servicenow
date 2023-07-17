@@ -2,12 +2,10 @@
 
 namespace Drupal\servicenow\Plugin;
 
-use Drupal\oit\Plugin\TeamsAlert;
 use Drupal\Component\Utility\Xss;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Drupal\servicenow\Plugin\ServicenowUrl;
-use Drupal\servicenow\Plugin\ServicenowKey;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\oit\Plugin\TeamsAlert;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Make servicenow api call.

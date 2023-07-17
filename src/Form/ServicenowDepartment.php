@@ -2,17 +2,17 @@
 
 namespace Drupal\servicenow\Form;
 
-use Drupal\servicenow\Plugin\PrincessList;
 use Drupal\Component\Utility\Xss;
-use Drupal\Core\Form\ConfigFormBase;
-use Drupal\Core\Session\AccountInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Url;
-use Drupal\user\UserStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
+use Drupal\Core\Form\ConfigFormBase;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
+use Drupal\servicenow\Plugin\PrincessList;
+use Drupal\user\UserStorageInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Class ShortSheets.
@@ -65,6 +65,8 @@ class ServicenowDepartment extends ConfigFormBase {
    *   Load user entity.
    * @param \Drupal\user\UserStorageInterface $user_storage
    *   User Load function.
+   * @param \Drupal\servicenow\Plugin\PrincessList $princess_list
+   *   Princess list.
    */
   public function __construct(
     RequestStack $request_stack,

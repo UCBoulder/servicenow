@@ -3,7 +3,6 @@
 namespace Drupal\servicenow\Plugin;
 
 use Drupal\Core\Cache\CacheBackendInterface;
-use Drupal\servicenow\Plugin\CacheDrupalFormList;
 
 /**
  * Fetch drupal form list.
