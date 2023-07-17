@@ -6,6 +6,14 @@ namespace Drupal\servicenow\Plugin;
  * Lookup specific princess.
  */
 class LookupPrincess {
+
+  /**
+   * Princess list data.
+   *
+   * @var \Drupal\servicenow\Plugin\PrincessList
+   */
+  private $princessList;
+
   /**
    * Princess data.
    *
@@ -14,13 +22,19 @@ class LookupPrincess {
   private $princess;
 
   /**
+   * Constructor.
+   */
+  public function __construct(PrincessList $princess_list) {
+    $this->princessList = $princess_list;
+  }
+
+  /**
    * Look up selected user by sysID.
    */
-  public function __construct($sys_id) {
-    $princess = new PrincessList();
-    $princess_list = $princess->getData();
-    $princess_list = $princess_list['users'];
-    $this->princess = $princess_list[$sys_id];
+  public function userLookup($sys_id) {
+    $princess_list = $this->princessList->getData();
+    $princess_users = $princess_list['users'];
+    $this->princess = $princess_users[$sys_id];
   }
 
   /**

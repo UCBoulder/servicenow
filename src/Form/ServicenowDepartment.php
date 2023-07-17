@@ -18,6 +18,14 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * Class ShortSheets.
  */
 class ServicenowDepartment extends ConfigFormBase {
+
+  /**
+   * Servicenow call princess list.
+   *
+   * @var \Drupal\servicenow\Plugin\PrincessList
+   */
+  protected $princessList;
+
   /**
    * Object used to get request data, such as the hash.
    *
@@ -62,12 +70,14 @@ class ServicenowDepartment extends ConfigFormBase {
     RequestStack $request_stack,
     AccountInterface $account,
     EntityTypeManagerInterface $entity_type_manager,
-    UserStorageInterface $user_storage
+    UserStorageInterface $user_storage,
+    PrincessList $princess_list
   ) {
     $this->requestStack = $request_stack;
     $this->account = $account;
     $this->entityTypeManager = $entity_type_manager;
     $this->userStorage = $user_storage;
+    $this->princessList = $princess_list;
   }
 
   /**
@@ -78,7 +88,8 @@ class ServicenowDepartment extends ConfigFormBase {
       $container->get('request_stack'),
       $container->get('current_user'),
       $container->get('entity_type.manager'),
-      $container->get('entity_type.manager')->getStorage('user')
+      $container->get('entity_type.manager')->getStorage('user'),
+      $container->get('servicenow.princess.list')
     );
     return $self;
   }
@@ -107,7 +118,7 @@ class ServicenowDepartment extends ConfigFormBase {
     $user_detail = $this->entityTypeManager->getStorage('user')->load($current_user->id());
     $user_dds_checkbox = $user_detail->get('field_dds')->getString();
     $current_user_sys_id = $user_detail->get('field_service_meow_sys_id')->getString();
-    $princess_list = new princessList();
+    $princess_list = $this->princessList;
     $current_user_princess = $princess_list->getData()['users'][$current_user_sys_id] ?? NULL;
     $princess_list = $princess_list->getData()['departments'];
     $pl_departments = [];

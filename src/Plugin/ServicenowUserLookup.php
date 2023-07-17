@@ -10,14 +10,28 @@ use Drupal\Component\Utility\Xss;
 class ServicenowUserLookup {
 
   /**
-   * Function to determine which Servicenow URL to use.
+   * Call servicenow api.
+   *
+   * @var \Drupal\servicenow\Plugin\ServicenowApiCall
    */
-  public function __construct($account) {
+  protected $apiCall;
+
+  /**
+   * Setup constructor.
+   */
+  public function __construct(ServicenowApiCall $api_call) {
+    $this->apiCall = $api_call;
+  }
+
+  /**
+   * Update user account using servicenow api.
+   */
+  public function update($account) {
     $acct_name = $account->getAccountName();
     $name = [
       'user_name' => $acct_name,
     ];
-    $api_call = \Drupal::service('servicenow.api.call');
+    $api_call = $this->apiCall;
     $result = $api_call->apiCallMeMaybe('sys_user', $name);
     if (!empty($result->result)) {
       if (isset($result->result[0]->department->value)) {

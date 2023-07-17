@@ -11,3 +11,18 @@ services:
   servicenow.api.call:
     class: Drupal\servicenow\Plugin\ServicenowApiCall
     arguments: ['@request_stack', '@servicenow.url', '@servicenow.key', '@logger.factory', '@oit.teamsalert']
+  servicenow.user.lookup:
+    class: Drupal\servicenow\Plugin\ServicenowUserLookup
+    arguments: ['@servicenow.api.call']
+  servicenow.princess.list:
+    class: Drupal\servicenow\Plugin\PrincessList
+    arguments: ['@database', '@servicenow.fetch.settings', '@servicenow.api.call', '@oit.teamsalert', '@logger.factory']
+  servicenow.lookup.princess:
+    class: Drupal\servicenow\Plugin\LookupPrincess
+    arguments: ['@servicenow.princess.list']
+  servicenow.formlist.fetch:
+    class: Drupal\servicenow\Plugin\FetchDrupalFormList
+    arguments: ['@cache.default', '@servicenow.formlist.cache']
+  servicenow.formlist.cache:
+    class: Drupal\servicenow\Plugin\CacheDrupalFormList
+    arguments: ['@servicenow.api.call', '@datetime.time', '@cache.default', '@servicenow.fetch.settings']

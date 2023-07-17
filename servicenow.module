@@ -5,18 +5,13 @@
  * Servicenow Module.
  */
 
-use Drupal\servicenow\Plugin\CacheDrupalFormList;
-use Drupal\user\UserInterface;
 use Drupal\Component\Utility\Xss;
-use Drupal\Core\Render\Markup;
-use Drupal\servicenow\Plugin\LookupPrincess;
-use Drupal\servicenow\Plugin\FetchDrupalFormList;
-use Drupal\user\Entity\User;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Url;
+use Drupal\user\Entity\User;
+use Drupal\user\UserInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Drupal\servicenow\Plugin\PrincessList;
-use Drupal\servicenow\Plugin\ServicenowUserLookup;
 
 /**
  * Implements hook_mail().
@@ -65,7 +60,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     // Add the submit handler after the existing Webform submit handler,
     // but before the second Webform handler. Pop off the first one and add
     // ours second.
-    $sn_table_type = isset($form['elements']['sn_table']['#default_value']) ? $form['elements']['sn_table']['#default_value'] : 'incident';
+    $sn_table_type = $form['elements']['sn_table']['#default_value'] ?? 'incident';
     if ($sn_table_type == 'incident' || 'ticket' || 'u_gnrl_req' || 'u_sec_task') {
       foreach (array_keys($form['actions']) as $action) {
         if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
@@ -102,8 +97,9 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
       $response = new RedirectResponse($url->toString());
       $response->send();
       exit;
-    } else {
-      $princess = new princessList();
+    }
+    else {
+      $princess = \Drupal::service('servicenow.princess.list');
       $princess_list = $princess->getData();
       $princess_list = $princess_list['users'];
       // Grab the user servicenow data that is using the form.
@@ -129,7 +125,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
       $form['elements']['sn_assignment_group']['#default_value'] = $current_user_data['assignment_group'];
       $form['elements']['sn_hidden_task_for_department']['#options'] = $behalf_of_users;
       $form['elements']['sn_hidden_task_for_department']['#default_value'] = $current_user_key;
-      // todo:  Need to add js to change on selection.
+      // @todo Need to add js to change on selection.
     }
   }
 }
@@ -170,27 +166,32 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   $description = '';
   $file_upload = 0;
   foreach ($form['elements'] as $key => $element) {
-    $form_item_type = isset($element['#type']) ? $element['#type'] : 'non-item';
+    $form_item_type = $element['#type'] ?? 'non-item';
     $form_key = Xss::filter($key);
     if ($form_item_type == 'fieldset' || $form_item_type == 'container' || $form_item_type == 'details' || $form_item_type == 'webform_section') {
       $description .= _servicenow_webform_fieldset($element);
-    } elseif ($form_item_type == 'webform_flexbox' || $form_item_type == 'webform_address' || $form_item_type == 'webform_contact') {
+    }
+    elseif ($form_item_type == 'webform_flexbox' || $form_item_type == 'webform_address' || $form_item_type == 'webform_contact') {
       $description .= _servicenow_webform_flexbox($element);
-    } elseif ($form_item_type == 'text_format' && isset($element['#default_value'])) {
+    }
+    elseif ($form_item_type == 'text_format' && isset($element['#default_value'])) {
       $description .= _servicenow_webform_data($element);
-    } elseif (((!preg_match("/^#/", $form_key)) && (isset($element['#value'])))) {
+    }
+    elseif (((!preg_match("/^#/", $form_key)) && (isset($element['#value'])))) {
       $item = is_array($element['#value']) ? $element['#value'] : Xss::filter($element['#value']);
       if (preg_match("/^sn_hidden_/", $key)) {
-      } elseif (preg_match("/^sn_/", $key)) {
+      }
+      elseif (preg_match("/^sn_/", $key)) {
         $key = substr($key, 3);
         $content[$key] = Xss::filter($item);
-      } else {
+      }
+      else {
         if (!empty($item) || $item == 0) {
           $description .= _servicenow_webform_data($element);
         }
       }
     }
-    $element_type = isset($element['#type']) ? $element['#type'] : 0;
+    $element_type = $element['#type'] ?? 0;
     if (($element_type) && ($element_type == 'managed_file' || $element_type == 'webform_audio_file' || $element_type == 'webform_video_file' || $element_type == 'webform_image_file' || $element_type == 'webform_document_file')) {
       $fids = $element['#value']['fids'];
       foreach ($fids as $fid) {
@@ -208,7 +209,7 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     }
   }
   // Grab the drupal webform list from cache or servicenow.
-  $drupal_form_list = new FetchDrupalFormList();
+  $drupal_form_list = \Drupal::service('servicenow.formlist.fetch');
   // Get this drupal webform list.
   $form_list = $drupal_form_list->getList();
   $table_type = $form['elements']['sn_table']['#value'];
@@ -223,7 +224,8 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     // Set both of these so we can track where the submission comes from in SN.
     $content['u_intg_table'] = 'u_drupal_form';
     $content['u_intg_assignment'] = $form_list[$drupal_form_array_id];
-  } else {
+  }
+  else {
     $sn_settings = \Drupal::service('servicenow.fetch.settings');
     $sn_settings->set(1);
   }
@@ -237,22 +239,23 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   if ($form['#form_id'] == 'webform_submission_dds_desktop_support_add_form' || $form['#form_id'] == 'webform_submission_dds_desktop_support_node_16699_add_form') {
     $current_user_id = Xss::filter($form['elements']['sn_hidden_current_user_id']['#value']);
     $selected_user_id = Xss::filter($form['elements']['sn_hidden_task_for_department']['#value']);
-    $selected_user_fetch_info = new LookupPrincess($selected_user_id);
-    $content['u_alternate_email'] = NULL !== $selected_user_fetch_info->getEmail() ? $selected_user_fetch_info->getEmail() : $user_submitting->getEmail();
+    $lookup_princess  = \Drupal::service('servicenow.lookup.princess');
+    $lookup_princess->userLookup($selected_user_id);
+    $content['u_alternate_email'] = NULL !== $lookup_princess->getEmail() ? $lookup_princess->getEmail() : $user_submitting->getEmail();
     $content['caller_id'] = $selected_user_id;
     if ($selected_user_id != $current_user_id) {
       $content['u_requested_by'] = $current_user_id;
     }
-    $content['u_contact_name'] = $selected_user_fetch_info->getName();
-    $content['u_dds_group'] = $selected_user_fetch_info->getDdsGroup();
-    $content['assignment_group'] = $selected_user_fetch_info->getAssignmentGroup();
+    $content['u_contact_name'] = $lookup_princess->getName();
+    $content['u_dds_group'] = $lookup_princess->getDdsGroup();
+    $content['assignment_group'] = $lookup_princess->getAssignmentGroup();
   }
 
   $content_encode = json_encode($content);
   $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
     Xss::filter(\Drupal::request()->query->get('forcedev')) :
     0;
-  $servicenow_url  = \Drupal::service('servicenow.url')->getUrl($forcedev);
+  $servicenow_url = \Drupal::service('servicenow.url')->getUrl($forcedev);
   $post_url = $servicenow_url . '/api/now/table/' . $table_type;
   $meow_key = \Drupal::service('servicenow.key')->getKey();
   // Initialize curl handle.
@@ -288,15 +291,17 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     // Close cURL handler.
     curl_close($ch);
     // Some kind of an error happened.
-    //die(curl_error($ch));
-  } elseif (empty($result->result->number)) {
+    // die(curl_error($ch));
+  }
+  elseif (empty($result->result->number)) {
     $tempstore->set("meow-status", 0);
     \Drupal::logger('servicenow')->error("Servicenow not creating ticket \_(ツ)_/¯ api results: " . $post_url . $result->error->message . " Details: " . $result->error->detail);
     \Drupal::messenger()->addMessage(t("Your submission has not been submitted to Service Now."), 'error');
     $form['service_now'] = 'Your submission has not been submitted to Service Now. Please click our feedback button to report this error.';
     servicenow_send('snmail', $params);
     curl_close($ch);
-  } else {
+  }
+  else {
     $tempstore->set("meow-status", 1);
     $info = curl_getinfo($ch);
     if ($file_upload) {
@@ -338,20 +343,20 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
       '<a href="%s">%s</a>',
       $servicenow_url . '/sncms/view.do?sysparm_document_key=task,' . $sn_sysid,
       t('View on Servicenow')
-    );
+      );
     \Drupal::messenger()->addMessage(t("Your submission has been completed successfully."));
     \Drupal::messenger()->addMessage(sprintf(
       "%s %s",
       t("Your request ID is:"),
       $sn_case_num
-    ));
+      ));
     $sn_link = Markup::create($sn_link);
     \Drupal::messenger()->addMessage($sn_link, 'status');
     $sent_description = sprintf(
       "<details><summary>%s</summary>%s</details>",
       t("Details sent to Servicenow"),
       $sn_description
-    );
+      );
     $sent_description = Markup::create($sent_description);
     \Drupal::messenger()->addMessage($sent_description);
   }
@@ -382,7 +387,8 @@ function _servicenow_webform_options_key($element) {
   $option_key = Xss::filter($element['#value']);
   if (isset($options[$option_key])) {
     return $options[$option_key];
-  } else {
+  }
+  else {
     return '';
   }
 }
@@ -393,10 +399,11 @@ function _servicenow_webform_options_key($element) {
 function _servicenow_webform_fieldset($element) {
   $description = isset($element['#title']) ? Xss::filter($element['#title']) . "\n" : '';
   foreach ($element as $form_fs_val) {
-    $form_item_type = isset($form_fs_val['#type']) ? $form_fs_val['#type'] : 'non-item';
+    $form_item_type = $form_fs_val['#type'] ?? 'non-item';
     if ($form_item_type == 'fieldset' || $form_item_type == 'container' || $form_item_type == 'details' || $form_item_type == 'webform_section') {
       $description .= _servicenow_webform_fieldset($form_fs_val);
-    } elseif ($form_item_type != 'non-item') {
+    }
+    elseif ($form_item_type != 'non-item') {
       $description .= _servicenow_webform_data($form_fs_val);
     }
   }
@@ -409,10 +416,11 @@ function _servicenow_webform_fieldset($element) {
 function _servicenow_webform_flexbox($element) {
   $description = '';
   foreach ($element as $form_fs_val) {
-    $form_item_type = isset($form_fs_val['#type']) ? $form_fs_val['#type'] : 'non-item';
+    $form_item_type = $form_fs_val['#type'] ?? 'non-item';
     if ($form_item_type == 'fieldset') {
       $description .= _servicenow_webform_fieldset($form_fs_val);
-    } elseif ($form_item_type != 'non-item') {
+    }
+    elseif ($form_item_type != 'non-item') {
       $description .= _servicenow_webform_data($form_fs_val);
     }
   }
@@ -428,8 +436,8 @@ function _servicenow_webform_data($element) {
       return '';
     }
     $content = isset($element['#title']) ? Xss::filter($element['#title']) . " -\n" : '';
-    $element_type = isset($element['#type']) ? $element['#type'] : 0;
-    $element_value = isset($element['#value']) ? $element['#value'] : '';
+    $element_type = $element['#type'] ?? 0;
+    $element_value = $element['#value'] ?? '';
     if ($element_type == 'datetime') {
       $date = Xss::filter($element['#value']['date']);
       $date = date('F d Y', strtotime($date));
@@ -441,32 +449,38 @@ function _servicenow_webform_data($element) {
         t('Time'),
         $time
       );
-    } elseif ($element_type == 'date') {
+    }
+    elseif ($element_type == 'date') {
       $date = Xss::filter($element['#value']);
       $date = date('F d Y', strtotime($date));
       $content .= sprintf(
         "%s: %s",
         t('Date'),
         $date
-      );
-    } elseif ($element_type == 'webform_time') {
+          );
+    }
+    elseif ($element_type == 'webform_time') {
       $time = Xss::filter($element['#value']);
       $time = date('g:i a', strtotime($time));
       $content .= $time;
-    } elseif ($element_type == 'text_format') {
+    }
+    elseif ($element_type == 'text_format') {
       $content .= Xss::filter($element['value']['#value']);
-    } elseif ($element_type == 'radios' || $element_type == 'select') {
+    }
+    elseif ($element_type == 'radios' || $element_type == 'select') {
       $content .= _servicenow_webform_options_key($element);
-    } elseif ($element_type == 'managed_file' || $element_type == 'webform_audio_file' || $element_type == 'webform_video_file' || $element_type == 'webform_image_file' || $element_type == 'webform_document_file') {
-      # Currently sending over api and leaving out of content.
-      #$fids = $element['#value']['fids'];
-      #foreach ($fids as $fid) {
-      #  $file_uri = $element['#files'][$fid]->getFileUri();
-      #  $file_url = file_create_url($file_uri);
-      #  $content .= $file_url;
-      #}
+    }
+    elseif ($element_type == 'managed_file' || $element_type == 'webform_audio_file' || $element_type == 'webform_video_file' || $element_type == 'webform_image_file' || $element_type == 'webform_document_file') {
+      // Currently sending over api and leaving out of content.
+      // $fids = $element['#value']['fids'];
+      // foreach ($fids as $fid) {
+      // $file_uri = $element['#files'][$fid]->getFileUri();
+      // $file_url = file_create_url($file_uri);
+      // $content .= $file_url;
+      // }.
       return '';
-    } elseif ($element_type == 'webform_custom_composite') {
+    }
+    elseif ($element_type == 'webform_custom_composite') {
       foreach ($element['#value'] as $comp_array) {
         foreach ($comp_array as $key => $comp) {
           $key = Xss::filter($key);
@@ -474,40 +488,47 @@ function _servicenow_webform_data($element) {
           $content .= "$title: " . Xss::filter($comp) . "\n";
         }
       }
-    } elseif (is_array($element_value)) {
+    }
+    elseif (is_array($element_value)) {
       if (isset($element['#options'])) {
         if ($element_type == 'webform_table_sort' || $element_type == 'webform_tableselect_sort' || $element_type == 'tableselect') {
           foreach ($element['#value'] as $value) {
             $content .= Xss::filter($value) . "\n";
           }
-        } else {
+        }
+        else {
           $options = $element['#options'];
           foreach ($element['#value'] as $form_m) {
             $option_key = Xss::filter($form_m);
             $content .= Xss::filter($options[$option_key]) . "\n";
           }
         }
-      } else {
+      }
+      else {
         foreach ($element['#value'] as $key => $text) {
           if (isset($text['select'])) {
             $content .= Xss::filter($text['select']) . "\n";
-          } elseif (isset($text['other'])) {
+          }
+          elseif (isset($text['other'])) {
             $content .= Xss::filter($text['other']) . "\n";
-          } else {
+          }
+          else {
             $content .= sprintf(
               "%s: %s\n",
               Xss::filter($key),
               Xss::filter($text)
-            );
+                      );
           }
         }
       }
-    } elseif (!empty($element_value)) {
+    }
+    elseif (!empty($element_value)) {
       $content .= Xss::filter($element['#value']);
     }
     $content .= "\n\n";
     return $content;
-  } else {
+  }
+  else {
     return '';
   }
 }
@@ -523,8 +544,9 @@ function _get_headers_from_curl_response($response) {
   foreach (explode("\r\n", $header_text) as $i => $line) {
     if ($i === 0) {
       $headers['http_code'] = $line;
-    } else {
-      list($key, $value) = explode(': ', $line);
+    }
+    else {
+      [$key, $value] = explode(': ', $line);
 
       $headers[$key] = $value;
     }
@@ -537,7 +559,8 @@ function _get_headers_from_curl_response($response) {
  */
 function servicenow_user_login(UserInterface $account) {
   if (empty($account->get('field_service_meow_affiliations')->getValue())) {
-    new ServicenowUserLookup($account);
+    $user_lookup = \Drupal::service('servicenow.user.lookup');
+    $user_lookup->update($account);
   }
 }
 
@@ -545,7 +568,7 @@ function servicenow_user_login(UserInterface $account) {
  * Implements hook_cron().
  */
 function servicenow_cron() {
-  $princess_list = new PrincessList();
+  $princess_list = \Drupal::service('servicenow.princess.list');
   $princess_list->cron();
   $princess_dead_hour = FALSE;
   $config = \Drupal::config('servicenow.settings');
@@ -555,7 +578,8 @@ function servicenow_cron() {
     if ((date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
       $princess_dead_hour = TRUE;
     }
-  } else {
+  }
+  else {
     // Run at Midnight.
     if ((date('G', time()) == 00) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
       $princess_dead_hour = TRUE;
@@ -580,7 +604,7 @@ function servicenow_cron() {
     $sn_settings = \Drupal::service('servicenow.fetch.settings');
     $drupal_list = $sn_settings->get();
     if ($drupal_list) {
-      new CacheDrupalFormList();
+      \Drupal::service('servicenow.formlist.cache');
       \Drupal::logger('servicenow')->notice("Updated drupal form list");
     }
   }

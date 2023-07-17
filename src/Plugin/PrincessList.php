@@ -3,15 +3,42 @@
 namespace Drupal\servicenow\Plugin;
 
 use Drupal\Component\Utility\Xss;
+use Drupal\Core\Database\Connection;
+use Drupal\servicenow\Plugin\ServicenowFetchSettings;
+use Drupal\servicenow\Plugin\ServicenowApiCall;
+use Drupal\oit\Plugin\TeamsAlert;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * Combined Princess functions into one class.
  */
 class PrincessList {
+
+  /**
+   * The logging channel.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
+   */
+  protected $logger;
+
+  /**
+   * Send an alert to teams.
+   *
+   * @var \Drupal\oit\Plugin\TeamsAlert
+   */
+  private $teamsAlert;
+
+  /**
+   * Make a servicenow api call.
+   *
+   * @var \Drupal\servicenow\Plugin\ServicenowApiCall
+   */
+  private $apiCall;
+
   /**
    * Establish Database connection.
    *
-   * @var object
+   * @var \Drupal\Core\Database\Connection
    */
   private $princessDbConnection;
 
@@ -32,7 +59,7 @@ class PrincessList {
   /**
    * Princess list settings.
    *
-   * @var object
+   * @var \Drupal\servicenow\Plugin\ServicenowFetchSettings
    */
   private $princessSettings;
 
@@ -74,15 +101,25 @@ class PrincessList {
   /**
    * Pull Princess List (DDS) from cache or servicenow if not cached.
    */
-  public function __construct() {
-    $this->princessDbConnection = \Drupal::database();
+  public function __construct(
+    Connection $connection,
+    ServicenowFetchSettings $fetch_settings,
+    ServicenowApiCall $api_call,
+    TeamsAlert $teams_alert,
+    LoggerChannelFactoryInterface $channelFactory
+  ) {
+    $this->princessDbConnection = $connection;
+    $this->princessSettings = $fetch_settings;
+    $this->apiCall = $api_call;
+    $this->teamsAlert = $teams_alert;
+    $this->logger = $channelFactory->get('servicenow');
+
     $result = $this->princessDbConnection->select('princess_list', 'pl')
       ->fields('pl', ['id', 'data'])
       ->execute();
     $pl_data = $result->fetchAllKeyed();
     $this->princessFirstKey = count($pl_data) >= 3 ? array_key_first($pl_data) : 0;
     $this->princessLastKey = array_key_last($pl_data);
-    $this->princessSettings = \Drupal::service('servicenow.fetch.settings');
     $this->princessReload = $this->princessSettings->getpr();
 
     $offset = $this->princessDbConnection->select('princess_list', 'pl')
@@ -110,7 +147,7 @@ class PrincessList {
     }
     if ($this->princessReload) {
       $pl_data = json_decode($this->plEnd, TRUE);
-      $api_call = \Drupal::service('servicenow.api.call');
+      $api_call = $this->apiCall;
       $dds_service_member_query = 'u_dds_service_request_group_member';
       $set_limit = 500;
       $query_limit = [
@@ -153,9 +190,8 @@ class PrincessList {
       }
       if (empty($dds_service_members->result) && empty($dds_service_group->result)) {
         $this->princessSettings->setpr(0);
-        $teams = \Drupal::service('oit.teamsalert');
-        $teams->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset", ['prod']);
-        \Drupal::logger('servicenow')->notice("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
+        $this->teamsAlert->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset", ['prod']);
+        $this->logger->notice("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
       }
       else {
         $new_offset = $set_limit + $this->plOffset;
@@ -189,9 +225,8 @@ class PrincessList {
     $princess_list = json_encode($princess_list);
     $row = ['data' => $princess_list];
     $this->princessDbConnection->insert('princess_list')->fields($row)->execute();
-    $teams = \Drupal::service('oit.teamsalert');
-    $teams->sendMessage("Princess reload start", ['prod']);
-    \Drupal::logger('servicenow')->notice("Princess reload start");
+    $this->teamsAlert->sendMessage("Princess reload start", ['prod']);
+    $this->logger->notice("Princess reload start");
   }
 
 }
