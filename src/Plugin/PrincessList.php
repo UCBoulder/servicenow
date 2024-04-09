@@ -136,7 +136,7 @@ class PrincessList {
   /**
    * Cron function to clean and insert into table.
    */
-  public function cron() {
+  public function cron($limit_query = 1) {
     // Tidy up and clean out entries above 2.
     if ($this->princessFirstKey) {
       $this->princessDbConnection->delete('princess_list')
@@ -147,11 +147,17 @@ class PrincessList {
       $pl_data = json_decode($this->plEnd, TRUE);
       $api_call = $this->apiCall;
       $dds_service_member_query = 'u_dds_service_request_group_member';
-      $set_limit = 500;
-      $query_limit = [
-        'sysparm_limit' => $set_limit,
-        'sysparm_offset' => $this->plOffset,
-      ];
+      if ($limit_query) {
+        $set_limit = 1000;
+        $query_limit = [
+          'sysparm_limit' => $set_limit,
+          'sysparm_offset' => $this->plOffset,
+        ];
+      }
+      else {
+        $set_limit = 0;
+        $query_limit = [];
+      }
       $dds_service_members = $api_call->apiCallMeMaybe($dds_service_member_query, $query_limit, 0, FALSE);
       $dds_service_group_query = 'u_dds_service_request_group';
       $dds_service_group = $api_call->apiCallMeMaybe($dds_service_group_query, $query_limit, 0);
@@ -187,9 +193,7 @@ class PrincessList {
         asort($pl_data['departments']);
       }
       if (empty($dds_service_members->result) && empty($dds_service_group->result)) {
-        $this->princessSettings->setpr(0);
-        $this->teamsAlert->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset", ['prod']);
-        $this->logger->notice("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
+        $this->complete();
       }
       else {
         $new_offset = $set_limit + $this->plOffset;
@@ -199,8 +203,20 @@ class PrincessList {
           ->condition('id', $this->princessLastKey)
           ->fields($row)
           ->execute();
+        if ($limit_query === 0) {
+          $this->complete();
+        }
       }
     }
+  }
+
+  /**
+   * Complete princess list pull.
+   */
+  public function complete() {
+    $this->princessSettings->setpr(0);
+    $this->teamsAlert->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset", ['prod']);
+    $this->logger->notice("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
   }
 
   /**
