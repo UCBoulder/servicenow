@@ -215,8 +215,35 @@ class PrincessList {
    */
   public function complete() {
     $this->princessSettings->setpr(0);
-    $this->teamsAlert->sendMessage("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset", ['prod']);
-    $this->logger->notice("Princess Data loaded into id: $this->princessLastKey with offset: $this->plOffset");
+    $users = $this->getCount('users');
+    $departments = $this->getCount('departments');
+    $this->teamsAlert->sendMessage("Princess Data loaded.
+      id: $this->princessLastKey
+      offset: $this->plOffset
+      user count: $users
+      departments: $departments",
+      ['prod']
+    );
+    $this->logger->notice("Princess Data loaded.
+      id: $this->princessLastKey
+      offset: $this->plOffset
+      user count: $users
+      departments: $departments"
+    );
+  }
+
+  /**
+   * Get user/dept count.
+   *
+   * @param string $type
+   *   Type of count to get users or departments.
+   */
+  public function getCount($type) {
+    $query = $this->princessDbConnection->select('princess_list', 'pl');
+    $query->fields('pl', ['data']);
+    $pl = $query->execute()->fetchAll();
+    $pl = json_decode($pl[1]->data, TRUE);
+    return count($pl[$type]);
   }
 
   /**
