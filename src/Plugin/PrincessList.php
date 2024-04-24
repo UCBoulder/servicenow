@@ -5,6 +5,7 @@ namespace Drupal\servicenow\Plugin;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use Drupal\Core\State\State;
 use Drupal\oit\Plugin\TeamsAlert;
 
 /**
@@ -18,6 +19,13 @@ class PrincessList {
    * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
    */
   protected $logger;
+
+  /**
+   * Drupal state variable.
+   *
+   * @var \Drupal\Core\State\State
+   */
+  protected $state;
 
   /**
    * Send an alert to teams.
@@ -105,12 +113,14 @@ class PrincessList {
     ServicenowApiCall $api_call,
     TeamsAlert $teams_alert,
     LoggerChannelFactoryInterface $channelFactory,
+    State $state,
   ) {
     $this->princessDbConnection = $connection;
     $this->princessSettings = $fetch_settings;
     $this->apiCall = $api_call;
     $this->teamsAlert = $teams_alert;
     $this->logger = $channelFactory->get('servicenow');
+    $this->state = $state;
 
     $result = $this->princessDbConnection->select('princess_list', 'pl')
       ->fields('pl', ['id', 'data'])
@@ -192,15 +202,15 @@ class PrincessList {
         }
         asort($pl_data['departments']);
       }
-      $princess_discount_double_check = \Drupal::state()->get('servicenow.princess.doublecheck');
+      $princess_discount_double_check = $this->state->get('servicenow.princess.doublecheck');
       if (empty($dds_service_members->result) && empty($dds_service_group->result)) {
         if ($princess_discount_double_check > 2) {
           $this->complete();
-          \Drupal::state()->set('servicenow.princess.doublecheck', 0);
+          $this->state->set('servicenow.princess.doublecheck', 0);
         }
         else {
           $princess_discount_double_check++;
-          \Drupal::state()->set('servicenow.princess.doublecheck', $princess_discount_double_check);
+          $this->state->set('servicenow.princess.doublecheck', $princess_discount_double_check);
         }
         $this->complete();
       }
