@@ -76,6 +76,7 @@ class ServicenowApiCall {
    */
   public function apiCallMeMaybe($table, $query, $string = NULL, $close = TRUE) {
     $meow_url = $this->meowUrl;
+    $this->logger->notice('Using servicenow URL: ' . $meow_url);
     $meow_key = $this->meowKey;
     if ($string == NULL) {
       $query_string = http_build_query($query);
