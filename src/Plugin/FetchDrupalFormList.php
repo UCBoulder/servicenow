@@ -35,7 +35,7 @@ class FetchDrupalFormList {
    */
   public function __construct(
     CacheBackendInterface $default_cache,
-    CacheDrupalFormList $formlist_cache
+    CacheDrupalFormList $formlist_cache,
   ) {
     $this->defaultCache = $default_cache;
     $this->formlistCache = $formlist_cache;

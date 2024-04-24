@@ -55,7 +55,7 @@ class ServicenowApiCall {
     ServicenowUrl $servicenow_url,
     ServicenowKey $servicenow_key,
     LoggerChannelFactoryInterface $channelFactory,
-    TeamsAlert $teams_alert
+    TeamsAlert $teams_alert,
   ) {
     $this->logger = $channelFactory->get('servicenow');
     $this->requestStack = $request_stack;

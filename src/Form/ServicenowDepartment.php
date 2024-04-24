@@ -73,7 +73,7 @@ class ServicenowDepartment extends ConfigFormBase {
     AccountInterface $account,
     EntityTypeManagerInterface $entity_type_manager,
     UserStorageInterface $user_storage,
-    PrincessList $princess_list
+    PrincessList $princess_list,
   ) {
     $this->requestStack = $request_stack;
     $this->account = $account;

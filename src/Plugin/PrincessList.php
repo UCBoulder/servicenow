@@ -104,7 +104,7 @@ class PrincessList {
     ServicenowFetchSettings $fetch_settings,
     ServicenowApiCall $api_call,
     TeamsAlert $teams_alert,
-    LoggerChannelFactoryInterface $channelFactory
+    LoggerChannelFactoryInterface $channelFactory,
   ) {
     $this->princessDbConnection = $connection;
     $this->princessSettings = $fetch_settings;
