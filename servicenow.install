@@ -77,3 +77,10 @@ function servicenow_update_9002() {
   $config = \Drupal::configFactory()->getEditable('servicenow.settings');
   $config->set('servicenow_api_prod', TRUE)->save();
 }
+
+/**
+ * Create state variable for princess list.
+ */
+function servicenow_update_10000() {
+  \Drupal::state()->set('servicenow.princess.doublecheck', 0);
+}

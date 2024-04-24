@@ -192,7 +192,16 @@ class PrincessList {
         }
         asort($pl_data['departments']);
       }
+      $princess_discount_double_check = \Drupal::state()->get('servicenow.princess.doublecheck');
       if (empty($dds_service_members->result) && empty($dds_service_group->result)) {
+        if ($princess_discount_double_check > 2) {
+          $this->complete();
+          \Drupal::state()->set('servicenow.princess.doublecheck', 0);
+        }
+        else {
+          $princess_discount_double_check++;
+          \Drupal::state()->set('servicenow.princess.doublecheck', $princess_discount_double_check);
+        }
         $this->complete();
       }
       else {
