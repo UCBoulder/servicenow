@@ -212,7 +212,6 @@ class PrincessList {
           $princess_discount_double_check++;
           $this->state->set('servicenow.princess.doublecheck', $princess_discount_double_check);
         }
-        $this->complete();
       }
       else {
         $new_offset = $set_limit + $this->plOffset;
