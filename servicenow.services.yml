@@ -16,7 +16,7 @@ services:
     arguments: ['@servicenow.api.call']
   servicenow.princess.list:
     class: Drupal\servicenow\Plugin\PrincessList
-    arguments: ['@database', '@servicenow.fetch.settings', '@servicenow.api.call', '@oit.teamsalert', '@logger.factory']
+    arguments: ['@database', '@servicenow.fetch.settings', '@servicenow.api.call', '@oit.teamsalert', '@logger.factory', '@state']
   servicenow.lookup.princess:
     class: Drupal\servicenow\Plugin\LookupPrincess
     arguments: ['@servicenow.princess.list']
