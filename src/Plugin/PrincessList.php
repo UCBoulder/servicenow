@@ -240,7 +240,7 @@ class PrincessList {
       offset: $this->plOffset
       user count: $users
       departments: $departments",
-      ['prod']
+      ['live']
     );
     $this->logger->notice("Princess Data loaded.
       id: $this->princessLastKey
@@ -284,7 +284,7 @@ class PrincessList {
     $princess_list = json_encode($princess_list);
     $row = ['data' => $princess_list];
     $this->princessDbConnection->insert('princess_list')->fields($row)->execute();
-    $this->teamsAlert->sendMessage("Princess reload start", ['prod']);
+    $this->teamsAlert->sendMessage("Princess reload start", ['live']);
     $this->logger->notice("Princess reload start");
   }
 
