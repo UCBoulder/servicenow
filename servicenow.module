@@ -575,7 +575,7 @@ function servicenow_cron() {
   $servicenow_api_prod = $config->get('servicenow_api_prod');
   if ($servicenow_api_prod) {
     // Run 1am.
-    if ((date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
+    if ((date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 9)) {
       $princess_dead_hour = TRUE;
     }
   }
