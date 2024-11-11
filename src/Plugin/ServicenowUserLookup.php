@@ -50,10 +50,6 @@ class ServicenowUserLookup {
         else {
           $department2 = '';
         }
-        // Set oit_administration role if dept matches correctly.
-        if ($deptartment == 'OIT-Administration' || $department2 == 'OIT-Administration') {
-          $account->addRole('oit_administration');
-        }
       }
       if (!empty($result->result[0]->u_boulderallaffiliations)) {
         $affiliation = array_map('trim', array_filter(explode(',', $result->result[0]->u_boulderallaffiliations)));
@@ -84,12 +80,6 @@ class ServicenowUserLookup {
         $myuserroles = $account->getRoles();
         $affiliation_check = [];
         foreach ($affiliation as $aff) {
-          if ((array_search($aff, $facstaff)) && (!array_search('dl facstaff', $myuserroles))) {
-            $account->addRole('dl_facstaff');
-          }
-          if ((array_search($aff, $student)) && (!array_search('dl student', $myuserroles))) {
-            $account->addRole('dl_student');
-          }
           $affiliation_check[] = Xss::filter($aff);
         }
         $account->set('field_service_meow_affiliations', $affiliation_check);
