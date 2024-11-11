@@ -53,31 +53,6 @@ class ServicenowUserLookup {
       }
       if (!empty($result->result[0]->u_boulderallaffiliations)) {
         $affiliation = array_map('trim', array_filter(explode(',', $result->result[0]->u_boulderallaffiliations)));
-        $facstaff = [
-          'Employee-Officer/Exempt Professional',
-          'Staff-Officer/Exempt Professional',
-          'Employee-Officer/Exempt Professional',
-          'Employee-Research Faculty',
-          'Faculty-Research Faculty',
-          'Employee-Faculty',
-          'Employee-Staff',
-          'Employee-Student Employee',
-          'Employee-Research Faculty',
-          'Employee-Faculty',
-          'Employee-Staff',
-          'Employee-Student Employee',
-          'Employee-Student Faculty',
-          'Faculty-Student Faculty',
-          'Employee-Student Faculty',
-          'Staff-Staff',
-        ];
-        $student = [
-          'Student-Continuing Ed Credit Student',
-          'Student-Student',
-          'Affiliate-Confirmed Student',
-          'Affiliate-Confirmed Student',
-        ];
-        $myuserroles = $account->getRoles();
         $affiliation_check = [];
         foreach ($affiliation as $aff) {
           $affiliation_check[] = Xss::filter($aff);
