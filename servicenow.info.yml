@@ -2,4 +2,4 @@ name: 'Service Now'
 type: module
 description: 'Webforms to submit to servicenow'
 
-core_version_requirement: ^9.4 || ^10
+core_version_requirement: ^10 || ^11
