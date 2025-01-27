@@ -575,14 +575,22 @@ function servicenow_cron() {
   $servicenow_api_prod = $config->get('servicenow_api_prod');
   if ($servicenow_api_prod) {
     // Run 1am.
-    if ((date('G', time()) == 01) && (date('i', time()) >= 0) && (date('i', time()) < 9)) {
-      $princess_dead_hour = TRUE;
+    if (date('G', time()) == 1) {
+      $settings = \Drupal::service('servicenow.fetch.settings');
+      $is_reloading = $settings->getpr();
+      if ($is_reloading === 0) {
+        $princess_dead_hour = TRUE;
+      }
     }
   }
   else {
     // Run at Midnight.
-    if ((date('G', time()) == 00) && (date('i', time()) >= 0) && (date('i', time()) < 5)) {
-      $princess_dead_hour = TRUE;
+    if (date('G', time()) == 00) {
+      $settings = \Drupal::service('servicenow.fetch.settings');
+      $is_reloading = $settings->getpr();
+      if ($is_reloading === 0) {
+        $princess_dead_hour = TRUE;
+      }
     }
   }
 
