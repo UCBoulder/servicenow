@@ -432,6 +432,9 @@ function _servicenow_webform_flexbox($element) {
  */
 function _servicenow_webform_data($element) {
   if (is_array($element)) {
+    if (!array_key_exists('#value', $element)) {
+      return '';
+    }
     if ($element['#value'] == '') {
       return '';
     }
