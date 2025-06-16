@@ -84,6 +84,9 @@ class ServicenowUserLookup {
     if (empty($account->getEmail())) {
       $query = ['user_name' => $account->getAccountName()];
       $result = $api_call->apiCallMeMaybe('sys_user', $query);
+      if ($result->result[0]->email == NULL) {
+        return;
+      }
       $account->setEmail(Xss::filter($result->result[0]->email));
       $account->save();
     }
