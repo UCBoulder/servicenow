@@ -571,52 +571,55 @@ function servicenow_user_login(UserInterface $account) {
  * Implements hook_cron().
  */
 function servicenow_cron() {
-  $princess_list = \Drupal::service('servicenow.princess.list');
-  $princess_list->cron();
-  $princess_dead_hour = FALSE;
-  $config = \Drupal::config('servicenow.settings');
-  $servicenow_api_prod = $config->get('servicenow_api_prod');
-  if ($servicenow_api_prod) {
-    // Run 1am.
-    if (date('G', time()) == 1) {
-      $settings = \Drupal::service('servicenow.fetch.settings');
-      $is_reloading = $settings->getpr();
-      if ($is_reloading === 0) {
-        $princess_dead_hour = TRUE;
+  $env = getenv('PANTHEON_ENVIRONMENT');
+  if ($env == 'live') {
+    $princess_list = \Drupal::service('servicenow.princess.list');
+    $princess_list->cron();
+    $princess_dead_hour = FALSE;
+    $config = \Drupal::config('servicenow.settings');
+    $servicenow_api_prod = $config->get('servicenow_api_prod');
+    if ($servicenow_api_prod) {
+      // Run 1am.
+      if (date('G', time()) == 1) {
+        $settings = \Drupal::service('servicenow.fetch.settings');
+        $is_reloading = $settings->getpr();
+        if ($is_reloading === 0) {
+          $princess_dead_hour = TRUE;
+        }
       }
     }
-  }
-  else {
-    // Run at Midnight.
-    if (date('G', time()) == 00) {
-      $settings = \Drupal::service('servicenow.fetch.settings');
-      $is_reloading = $settings->getpr();
-      if ($is_reloading === 0) {
-        $princess_dead_hour = TRUE;
+    else {
+      // Run at Midnight.
+      if (date('G', time()) == 00) {
+        $settings = \Drupal::service('servicenow.fetch.settings');
+        $is_reloading = $settings->getpr();
+        if ($is_reloading === 0) {
+          $princess_dead_hour = TRUE;
+        }
       }
     }
-  }
 
-  if ($princess_dead_hour || empty($princess_list)) {
-    $query = \Drupal::database()->select('user__field_dds', 'us');
-    $query->fields('us', ['entity_id']);
-    $query->condition('us.field_dds_value', '1');
-    $result = $query->execute();
-    $users = $result->fetchCol();
-    foreach ($users as $user_dds) {
-      $dds_user = User::load($user_dds);
-      $dds_user->set('field_dds', 0);
-      $dds_user->save();
-    }
+    if ($princess_dead_hour || empty($princess_list)) {
+      $query = \Drupal::database()->select('user__field_dds', 'us');
+      $query->fields('us', ['entity_id']);
+      $query->condition('us.field_dds_value', '1');
+      $result = $query->execute();
+      $users = $result->fetchCol();
+      foreach ($users as $user_dds) {
+        $dds_user = User::load($user_dds);
+        $dds_user->set('field_dds', 0);
+        $dds_user->save();
+      }
 
-    // Start a reload.
-    $princess_list->reload();
+      // Start a reload.
+      $princess_list->reload();
 
-    $sn_settings = \Drupal::service('servicenow.fetch.settings');
-    $drupal_list = $sn_settings->get();
-    if ($drupal_list) {
-      \Drupal::service('servicenow.formlist.cache');
-      \Drupal::logger('servicenow')->notice("Updated drupal form list");
+      $sn_settings = \Drupal::service('servicenow.fetch.settings');
+      $drupal_list = $sn_settings->get();
+      if ($drupal_list) {
+        \Drupal::service('servicenow.formlist.cache');
+        \Drupal::logger('servicenow')->notice("Updated drupal form list");
+      }
     }
   }
 }
