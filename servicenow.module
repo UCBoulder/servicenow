@@ -57,6 +57,19 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     $form['add']['name']['#autocomplete_path'] = 'servicenow/autocomplete';
   }
   if (isset($form['elements']['sn_table'])) {
+    $mail = $current_user->getEmail();
+
+    // If email is empty, hide webform.
+    if (empty($mail)) {
+      $form['#access'] = FALSE;
+      $message = t("You must have a valid email address associated with your account to submit this form. Please go to this <a href=':link'>tutorial</a> to setup your email. After you update your email, log out from this site and log in again to access this form.", [
+        ':link' => "/tutorial/identikey-manager-campus-published-email",
+      ]);
+      // Apply markup to message.
+      $message = Markup::create($message);
+      \Drupal::messenger()->addMessage($message, 'error');
+    }
+
     // Add the submit handler after the existing Webform submit handler,
     // but before the second Webform handler. Pop off the first one and add
     // ours second.
