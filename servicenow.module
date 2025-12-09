@@ -69,7 +69,6 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
       // Apply markup to message.
       $message = Markup::create($message);
       \Drupal::messenger()->addMessage($message, 'error');
-      return;
     }
 
     // Add the submit handler after the existing Webform submit handler,
