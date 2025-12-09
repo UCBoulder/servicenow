@@ -57,7 +57,6 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     $form['add']['name']['#autocomplete_path'] = 'servicenow/autocomplete';
   }
   if (isset($form['elements']['sn_table'])) {
-    $current_user = \Drupal::currentUser();
     $mail = $current_user->getEmail();
 
     // If email is empty, hide webform.
