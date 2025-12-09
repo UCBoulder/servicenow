@@ -63,9 +63,9 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     // If email is empty, hide webform.
     if ($mail == '') {
       $form['#access'] = FALSE;
-      $message = t("You must have a valid email address associated with your account to submit this form. Please go to this");
-      $message .= " <a href='https://oit.colorado.edu/tutorial/identikey-manager-campus-published-email'>tutorial</a> ";
-      $message .= t("to setup your email. After you update your email, log out from this site and log in again to access this form.");
+      $message = t("You must have a valid email address associated with your account to submit this form. Please go to this !link to setup your email. After you update your email, log out from this site and log in again to access this form.", [
+        '!link' => "<a href='https://oit.colorado.edu/tutorial/identikey-manager-campus-published-email'>tutorial</a>",
+      ]);
       // Apply markup to message.
       $message = Markup::create($message);
       \Drupal::messenger()->addMessage($message, 'error');
