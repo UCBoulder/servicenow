@@ -6,61 +6,12 @@
  */
 
 /**
- * Implements hook_install().
- */
-function servicenow_install() {
-  $sn_settings = \Drupal::service('servicenow.fetch.settings');
-  $sn_settings->set(1);
-
-  $filename = "princess_list.txt";
-  $uri = "public://$filename";
-  $directory_path = \Drupal::service('stream_wrapper_manager')->getViaUri($uri)->getDirectoryPath();
-  $pl_data = file_get_contents("$directory_path/$filename", TRUE);
-  $row = ['data' => $pl_data];
-  $db_connection = \Drupal::database();
-  $db_connection->insert('princess_list')->fields($row)->execute();
-}
-
-/**
  * Reset user tables to pull user data on next login.
  */
 function servicenow_update_9000() {
   \Drupal::database()->truncate('user__field_service_meow_affiliations')->execute();
   \Drupal::database()->truncate('user__field_user_department')->execute();
   \Drupal::database()->truncate('user__field_user_department2')->execute();
-}
-
-/**
- * Create princess table.
- */
-function servicenow_schema() {
-  $schema['princess_list'] = [
-    'description' => 'Princess List pulled daily',
-    'fields' => [
-      'id' => [
-        'description' => 'Table ID',
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ],
-      'data' => [
-        'description' => 'Pulled data from servicenow',
-        'type' => 'blob',
-        'not null' => TRUE,
-        'size' => 'big',
-      ],
-      'offset' => [
-        'description' => 'Offset for pulling data',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
-      ],
-    ],
-    'primary key' => ['id'],
-    'auto increment' => 1,
-  ];
-  return $schema;
 }
 
 /**
@@ -79,8 +30,23 @@ function servicenow_update_9002() {
 }
 
 /**
- * Create state variable for princess list.
+ * Delete princess list node and webforms.
  */
-function servicenow_update_10000() {
-  \Drupal::state()->set('servicenow.princess.doublecheck', 0);
+function servicenow_update_10001() {
+  if ($node = \Drupal\node\Entity\Node::load(16699)) {
+    $node->delete();
+  }
+  if ($webform = \Drupal\webform\Entity\Webform::load('dds_desktop_support')) {
+    $webform->delete();
+  }
+}
+
+/**
+ * Drop the princess_list database table.
+ */
+function servicenow_update_10002() {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('princess_list')) {
+    $schema->dropTable('princess_list');
+  }
 }

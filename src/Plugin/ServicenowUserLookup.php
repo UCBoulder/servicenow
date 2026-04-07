@@ -39,13 +39,11 @@ class ServicenowUserLookup {
         $dept = $api_call->apiCallMeMaybe('cmn_department', $query_dept);
         $deptartment = !empty($dept->result[0]->name) ? Xss::filter($dept->result[0]->name) : '';
         $account->set('field_user_department', $deptartment, TRUE);
-        $account->set('field_service_meow_department_id', Xss::filter($result->result[0]->department->value), TRUE);
         if (!empty($result->result[0]->u_secondarydepartment->value)) {
           $query_dept2 = ['sys_id' => $result->result[0]->u_secondarydepartment->value];
           $dept2 = $api_call->apiCallMeMaybe('cmn_department', $query_dept2);
           $department2 = Xss::filter($dept2->result[0]->name);
           $account->set('field_user_department2', $department2, TRUE);
-          $account->set('field_service_meow_department2id', Xss::filter($result->result[0]->department->value), TRUE);
         }
         else {
           $department2 = '';
@@ -73,9 +71,6 @@ class ServicenowUserLookup {
       }
       if (!empty($result->result[0]->sys_id)) {
         $account->set('field_service_meow_sys_id', Xss::filter($result->result[0]->sys_id));
-      }
-      if (!empty($result->result[0]->u_dds_group->value)) {
-        $account->set('field_service_meow_dds_pod_group', Xss::filter($result->result[0]->u_dds_group->value));
       }
       $account->save();
     }
