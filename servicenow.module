@@ -8,10 +8,8 @@
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Markup;
-use Drupal\Core\Url;
 use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Implements hook_mail().
@@ -48,10 +46,7 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
   $user_roles = $current_user->getRoles();
   if (!in_array("administrator", $user_roles) && !in_array("pseudo_admin", $user_roles) && $form_id == 'user_form') {
     $form['field_service_meow_sys_id']['#access'] = FALSE;
-    $form['field_service_meow_department_id']['#access'] = FALSE;
-    $form['field_service_meow_dds_pod_group']['#access'] = FALSE;
     $form['field_service_meow_affiliations']['#access'] = FALSE;
-    $form['field_dds']['#access'] = FALSE;
   }
   if ($form['#id'] == 'webform-components-form') {
     $form['add']['name']['#autocomplete_path'] = 'servicenow/autocomplete';
@@ -77,10 +72,6 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
     if ($sn_table_type == 'incident' || 'ticket' || 'u_gnrl_req' || 'u_sec_task') {
       foreach (array_keys($form['actions']) as $action) {
         if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
-          // If node 16699 set the impact field.
-          if ($form_id == 'webform_submission_dds_desktop_support_node_16699_add_form') {
-            $form['actions'][$action]['#submit'][] = 'servicenow_client_princess_submit_api';
-          }
           $form['actions'][$action]['#submit'][] = 'servicenow_client_submit_api';
         }
       }
@@ -98,63 +89,6 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
         \Drupal::messenger()->addMessage(t("Submits to Servicenow dev environment. Use another environment to use prod."));
       }
     }
-  }
-  $logged_in = $current_user->isAuthenticated();
-  if ($form_id == 'webform_submission_dds_desktop_support_node_16699_add_form' && $logged_in) {
-    $user_detail = User::load($current_user->id());
-    // kint($user_detail->get('field_service_meow_sys_id')->getString());
-    $request = \Drupal::request();
-    $selected_department = NULL !== $request->get('department') ? Xss::filter($request->get('department')) : '';
-    if ($selected_department == '') {
-      $url = Url::fromRoute('servicenow.servicenow_form');
-      $response = new RedirectResponse($url->toString());
-      $response->send();
-      exit;
-    }
-    else {
-      $princess = \Drupal::service('servicenow.princess.list');
-      $princess_list = $princess->getData();
-      $princess_list = $princess_list['users'];
-      // Grab the user servicenow data that is using the form.
-      $current_user_sysid = $user_detail->get('field_service_meow_sys_id')->getString();
-      $current_user_data = $princess_list[$current_user_sysid];
-      $behalf_of_users = [];
-      foreach ($princess_list as $princess_user) {
-        $request_group = $princess_user['request_group'];
-        $sys_id = $princess_user['sys_id'];
-        $user_name = $princess_user['user_name'];
-        if (in_array($selected_department, $request_group)) {
-          $behalf_of_users[$sys_id] = $user_name;
-        }
-      }
-      asort($behalf_of_users);
-      $current_user_key = $current_user_data['sys_id'];
-      $new_current_user_key = [$current_user_key => $princess_list[$current_user_sysid]['user_name'] . ' - Myself'];
-      unset($behalf_of_users[$current_user_key]);
-      $behalf_of_users = $new_current_user_key + $behalf_of_users;
-      $form['elements']['sn_hidden_current_user_id']['#default_value'] = $current_user_data['sys_id'];
-      $form['elements']['sn_caller_id']['#default_value'] = $current_user_data['sys_id'];
-      $form['elements']['sn_u_dds_group']['#default_value'] = $current_user_data['dds_group'];
-      $form['elements']['sn_assignment_group']['#default_value'] = $current_user_data['assignment_group'];
-      $form['elements']['sn_hidden_task_for_department']['#options'] = $behalf_of_users;
-      $form['elements']['sn_hidden_task_for_department']['#default_value'] = $current_user_key;
-      // @todo Need to add js to change on selection.
-    }
-  }
-}
-
-/**
- * FAPI #submit handler. Execute PHP submit handling.
- */
-function servicenow_client_princess_submit_api(&$form, FormStateInterface $form_state) {
-  $input = $form_state->getUserInput();
-  if ($input['sn_urgency'] == '3 - Low') {
-    $form['elements']['sn_impact']['#value'] = '3 - Low';
-    $form['elements']['urgency_meow_desc']['#value'] = 'I would like help, but it\'s not particularly urgent';
-  }
-  if ($input['sn_urgency'] == '2 - Medium') {
-    $form['elements']['sn_impact']['#value'] = '2 - Medium';
-    $form['elements']['urgency_meow_desc']['#value'] = 'I would like this done today, if possible';
   }
 }
 
@@ -246,23 +180,6 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   $content['u_alternate_email'] = $user_submitting->getEmail();
   $meow_sys_id = $user_submitting->get('field_service_meow_sys_id')->getValue();
   $content['opened_by'] = $meow_sys_id[0]['value'];
-
-  // Set aleternate_email and contact_name on princess list depending on who was
-  // selected in the 'on behalf of' drop-down.
-  if ($form['#form_id'] == 'webform_submission_dds_desktop_support_add_form' || $form['#form_id'] == 'webform_submission_dds_desktop_support_node_16699_add_form') {
-    $current_user_id = Xss::filter($form['elements']['sn_hidden_current_user_id']['#value']);
-    $selected_user_id = Xss::filter($form['elements']['sn_hidden_task_for_department']['#value']);
-    $lookup_princess  = \Drupal::service('servicenow.lookup.princess');
-    $lookup_princess->userLookup($selected_user_id);
-    $content['u_alternate_email'] = NULL !== $lookup_princess->getEmail() ? $lookup_princess->getEmail() : $user_submitting->getEmail();
-    $content['caller_id'] = $selected_user_id;
-    if ($selected_user_id != $current_user_id) {
-      $content['u_requested_by'] = $current_user_id;
-    }
-    $content['u_contact_name'] = $lookup_princess->getName();
-    $content['u_dds_group'] = $lookup_princess->getDdsGroup();
-    $content['assignment_group'] = $lookup_princess->getAssignmentGroup();
-  }
 
   $content_encode = json_encode($content);
   $forcedev = !empty(\Drupal::request()->query->get('forcedev')) ?
@@ -586,47 +503,10 @@ function servicenow_user_login(UserInterface $account) {
 function servicenow_cron() {
   $env = getenv('PANTHEON_ENVIRONMENT');
   if ($env == 'live') {
-    $princess_list = \Drupal::service('servicenow.princess.list');
-    $princess_list->cron();
-    $princess_dead_hour = FALSE;
     $config = \Drupal::config('servicenow.settings');
     $servicenow_api_prod = $config->get('servicenow_api_prod');
-    if ($servicenow_api_prod) {
-      // Run 1am.
-      if (date('G', time()) == 1) {
-        $settings = \Drupal::service('servicenow.fetch.settings');
-        $is_reloading = $settings->getpr();
-        if ($is_reloading === 0) {
-          $princess_dead_hour = TRUE;
-        }
-      }
-    }
-    else {
-      // Run at Midnight.
-      if (date('G', time()) == 00) {
-        $settings = \Drupal::service('servicenow.fetch.settings');
-        $is_reloading = $settings->getpr();
-        if ($is_reloading === 0) {
-          $princess_dead_hour = TRUE;
-        }
-      }
-    }
-
-    if ($princess_dead_hour || empty($princess_list)) {
-      $query = \Drupal::database()->select('user__field_dds', 'us');
-      $query->fields('us', ['entity_id']);
-      $query->condition('us.field_dds_value', '1');
-      $result = $query->execute();
-      $users = $result->fetchCol();
-      foreach ($users as $user_dds) {
-        $dds_user = User::load($user_dds);
-        $dds_user->set('field_dds', 0);
-        $dds_user->save();
-      }
-
-      // Start a reload.
-      $princess_list->reload();
-
+    $run_hour = $servicenow_api_prod ? 1 : 0;
+    if (date('G', time()) == $run_hour) {
       $sn_settings = \Drupal::service('servicenow.fetch.settings');
       $drupal_list = $sn_settings->get();
       if ($drupal_list) {
