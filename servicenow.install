@@ -5,6 +5,10 @@
  * Servicenow install settings.
  */
 
+use Drupal\webform\Entity\Webform;
+use Drupal\node\Entity\Node;
+use Drupal\field\Entity\FieldStorageConfig;
+
 /**
  * Reset user tables to pull user data on next login.
  */
@@ -18,7 +22,7 @@ function servicenow_update_9000() {
  * Delete field_service_meow_sys_id field.
  */
 function servicenow_update_9001() {
-  \Drupal\field\Entity\FieldStorageConfig::loadByName('user', 'field_service_meow_uuid')->delete();
+  FieldStorageConfig::loadByName('user', 'field_service_meow_uuid')->delete();
 }
 
 /**
@@ -33,10 +37,10 @@ function servicenow_update_9002() {
  * Delete princess list node and webforms.
  */
 function servicenow_update_10001() {
-  if ($node = \Drupal\node\Entity\Node::load(16699)) {
+  if ($node = Node::load(16699)) {
     $node->delete();
   }
-  if ($webform = \Drupal\webform\Entity\Webform::load('dds_desktop_support')) {
+  if ($webform = Webform::load('dds_desktop_support')) {
     $webform->delete();
   }
 }

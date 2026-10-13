@@ -143,10 +143,8 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
       $fids = $element['#value']['fids'];
       foreach ($fids as $fid) {
         $file_upload = 1;
-        $file_url = $element['#files'][$fid]->createFileUrl();
         $file_mime = $element['#files'][$fid]->getMimeType();
         $uri = $element['#files'][$fid]->getFileUri();
-        $absolute_path = \Drupal::service('file_system')->realpath($uri);
         $files[] = [
           'name' => $element['#files'][$fid]->getFilename(),
           'url' => $uri,
@@ -202,6 +200,9 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
   // Add POST fields.
   curl_setopt($ch, CURLOPT_POSTFIELDS, $content_encode);
   curl_setopt($ch, CURLOPT_POST, 1);
+  // Fail fast if ServiceNow is slow or unreachable.
+  curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 30);
   // Run the whole process.
   $result = curl_exec($ch);
   $result = json_decode($result);
@@ -257,9 +258,18 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
         // Add POST fields.
         curl_setopt($ch_files, CURLOPT_POSTFIELDS, $url_open);
         curl_setopt($ch_files, CURLOPT_POST, 1);
+        // Fail fast if ServiceNow is slow or unreachable.
+        curl_setopt($ch_files, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch_files, CURLOPT_TIMEOUT, 30);
         $result_files = curl_exec($ch_files);
+        if ($result_files === FALSE) {
+          \Drupal::logger('servicenow')->error('Attachment upload to servicenow failed for @name: @error', [
+            '@name' => $name,
+            '@error' => curl_error($ch_files),
+          ]);
+        }
+        curl_close($ch_files);
       }
-      curl_close($ch_files);
     }
     // Close cURL handler.
     curl_close($ch);
@@ -300,7 +310,6 @@ function servicenow_preprocess_webform_confirmation(&$vars) {
   $meow_status = $tempstore->get("meow-status");
 
   if ($meow_status === 0) {
-    $markup = t('An error occurred sending this information to Service Now. Please try resubmitting or contact us at oithelp@colorado.edu for further assistance.');
     $message['error'] = [
       '#type' => 'inline_template',
       '#template' => "{% trans %} An error occurred sending this information to Service Now. Please try resubmitting or {% endtrans %} <a href='oithelp@colorado.edu'>{% trans %} contact us {% endtrans %}</a> {% trans %} for further assistance. {% endtrans %}",
@@ -464,27 +473,6 @@ function _servicenow_webform_data($element) {
   else {
     return '';
   }
-}
-
-/**
- * Function to sort header response.
- */
-function _get_headers_from_curl_response($response) {
-  $headers = [];
-
-  $header_text = substr($response, 0, strpos($response, "\r\n\r\n"));
-
-  foreach (explode("\r\n", $header_text) as $i => $line) {
-    if ($i === 0) {
-      $headers['http_code'] = $line;
-    }
-    else {
-      [$key, $value] = explode(': ', $line);
-
-      $headers[$key] = $value;
-    }
-  }
-  return $headers;
 }
 
 /**
