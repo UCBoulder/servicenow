@@ -46,7 +46,6 @@ function servicenow_form_alter(&$form, FormStateInterface $form_state, $form_id)
   $user_roles = $current_user->getRoles();
   if (!in_array("administrator", $user_roles) && !in_array("pseudo_admin", $user_roles) && $form_id == 'user_form') {
     $form['field_service_meow_sys_id']['#access'] = FALSE;
-    $form['field_service_meow_affiliations']['#access'] = FALSE;
   }
   if ($form['#id'] == 'webform-components-form') {
     $form['add']['name']['#autocomplete_path'] = 'servicenow/autocomplete';
@@ -473,8 +472,8 @@ function _servicenow_webform_data($element) {
  * Implements hook_user_login().
  */
 function servicenow_user_login(UserInterface $account) {
-  if (empty($account->get('field_service_meow_affiliations')->getValue())) {
-    $user_lookup = \Drupal::service('servicenow.user.lookup');
+  $user_lookup = \Drupal::service('servicenow.user.lookup');
+  if ($user_lookup->isDue($account)) {
     $user_lookup->update($account);
   }
 }
