@@ -2,7 +2,9 @@
 
 namespace Drupal\servicenow\Plugin;
 
+use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Component\Utility\Xss;
+use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\oit\Plugin\TeamsAlert;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -48,7 +50,21 @@ class ServicenowApiCall {
   private $teamsAlert;
 
   /**
-   * Function to sort the curl headers.
+   * The default cache backend.
+   *
+   * @var \Drupal\Core\Cache\CacheBackendInterface
+   */
+  private $cache;
+
+  /**
+   * The time service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  private $time;
+
+  /**
+   * Constructs the API call service.
    */
   public function __construct(
     RequestStack $request_stack,
@@ -56,12 +72,16 @@ class ServicenowApiCall {
     ServicenowKey $servicenow_key,
     LoggerChannelFactoryInterface $channelFactory,
     TeamsAlert $teams_alert,
+    CacheBackendInterface $cache,
+    TimeInterface $time,
   ) {
     $this->logger = $channelFactory->get('servicenow');
     $this->requestStack = $request_stack;
     $this->meowUrl = $servicenow_url;
     $this->meowKey = $servicenow_key;
     $this->teamsAlert = $teams_alert;
+    $this->cache = $cache;
+    $this->time = $time;
 
     $forcedev = !empty($this->requestStack->getCurrentRequest()->get('forcedev')) ?
                 Xss::filter($this->requestStack->getCurrentRequest()->get('forcedev')) :
@@ -73,8 +93,22 @@ class ServicenowApiCall {
 
   /**
    * Function to make servicenow api call.
+   *
+   * @param string $table
+   *   The ServiceNow table.
+   * @param array $query
+   *   Query parameters.
+   * @param string|null $string
+   *   Optional raw path to use instead of the table and query.
+   * @param bool $close
+   *   Whether to close the curl handle.
+   * @param int $timeout
+   *   Total request timeout in seconds.
+   *
+   * @return object|null
+   *   The decoded response with status 'success', or NULL on failure.
    */
-  public function apiCallMeMaybe($table, $query, $string = NULL, $close = TRUE) {
+  public function apiCallMeMaybe($table, $query, $string = NULL, $close = TRUE, $timeout = 30) {
     $meow_url = $this->meowUrl;
     $this->logger->notice('Using servicenow URL: ' . $meow_url);
     $meow_key = $this->meowKey;
@@ -91,36 +125,27 @@ class ServicenowApiCall {
     curl_setopt($ch, CURLOPT_USERPWD, $meow_key);
     curl_setopt($ch, CURLOPT_URL, $request);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, min(10, $timeout));
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
-    // Run the whole process.
-    $result = curl_exec($ch);
-    curl_setopt($ch, CURLOPT_HEADER, 1);
-    curl_setopt($ch, CURLOPT_VERBOSE, 1);
-    // Run the whole process.
-    $header = curl_exec($ch);
+    $response = curl_exec($ch);
     if ($close) {
       // Close cURL handler.
       curl_close($ch);
     }
-    $construct_headers = new ServicenowCurlHeader($header);
-    $headers = $construct_headers->getHeaders();
-    $result = json_decode($result);
-    $result->headers = $headers;
-    if ((!isset($result->status)) && (!empty($result))) {
-      $result->status = 'success';
-    }
-    else {
-      $result->status = 'failure';
-    }
-    if (($result->status == 'failure') || (empty($result))) {
+    $result = $response === FALSE ? NULL : json_decode($response);
+    if (!is_object($result) || isset($result->status)) {
       $this->logger->notice('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $request);
-      $this->teamsAlert->sendMessage('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $request);
+      $cid = 'servicenow:api_alert';
+      if (!$this->cache->get($cid)) {
+        $alert_url = strtok($request, '?');
+        $this->teamsAlert->sendMessage('servicenow api not communicating correctly \_(ツ)_/¯ api call: ' . $alert_url);
+        $this->cache->set($cid, 1, $this->time->getRequestTime() + 900);
+      }
       return NULL;
     }
-    else {
-      return $result;
-    }
+    $result->status = 'success';
+    return $result;
   }
 
 }
