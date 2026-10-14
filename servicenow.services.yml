@@ -10,10 +10,10 @@ services:
     arguments: ['@config.factory']
   servicenow.api.call:
     class: Drupal\servicenow\Plugin\ServicenowApiCall
-    arguments: ['@request_stack', '@servicenow.url', '@servicenow.key', '@logger.factory', '@oit.teamsalert']
+    arguments: ['@request_stack', '@servicenow.url', '@servicenow.key', '@logger.factory', '@oit.teamsalert', '@cache.default', '@datetime.time']
   servicenow.user.lookup:
     class: Drupal\servicenow\Plugin\ServicenowUserLookup
-    arguments: ['@servicenow.api.call']
+    arguments: ['@servicenow.api.call', '@user.data', '@datetime.time', '@logger.factory']
   servicenow.formlist.fetch:
     class: Drupal\servicenow\Plugin\FetchDrupalFormList
     arguments: ['@cache.default', '@servicenow.formlist.cache']
