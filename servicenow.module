@@ -219,8 +219,6 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     \Drupal::messenger()->addMessage(t("Your submission has not been submitted to Service Now."), 'error');
     $form['service_now'] = 'Your submission has not been submitted to Service Now. Please click our feedback button to report this error.';
     servicenow_send('snmail', $params);
-    // Close cURL handler.
-    curl_close($ch);
     // Some kind of an error happened.
     // die(curl_error($ch));
   }
@@ -230,7 +228,6 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
     \Drupal::messenger()->addMessage(t("Your submission has not been submitted to Service Now."), 'error');
     $form['service_now'] = 'Your submission has not been submitted to Service Now. Please click our feedback button to report this error.';
     servicenow_send('snmail', $params);
-    curl_close($ch);
   }
   else {
     $tempstore->set("meow-status", 1);
@@ -268,11 +265,8 @@ function servicenow_client_submit_api(&$form, FormStateInterface $form_state) {
             '@error' => curl_error($ch_files),
           ]);
         }
-        curl_close($ch_files);
       }
     }
-    // Close cURL handler.
-    curl_close($ch);
     if (empty($info['http_code'])) {
       \Drupal::logger('servicenow')->error("No HTTP code was returned from servicenow.");
     }

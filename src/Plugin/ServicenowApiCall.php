@@ -99,10 +99,6 @@ class ServicenowApiCall {
     curl_setopt($ch, CURLOPT_VERBOSE, 1);
     // Run the whole process.
     $header = curl_exec($ch);
-    if ($close) {
-      // Close cURL handler.
-      curl_close($ch);
-    }
     $construct_headers = new ServicenowCurlHeader($header);
     $headers = $construct_headers->getHeaders();
     $result = json_decode($result);
